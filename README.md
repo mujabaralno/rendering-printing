@@ -5,18 +5,17 @@
 ![Playwright](https://img.shields.io/badge/Playwright-Test-green?style=for-the-badge&logo=playwright)
 ![Lighthouse](https://img.shields.io/badge/Lighthouse-Performance-orange?style=for-the-badge&logo=lighthouse)
 
-Proyek purwarupa eksperimental ini dirancang khusus untuk menguji, membandingkan, dan mengukur dampak komputasi berat (*compute-heavy*) dari algoritma **2D Guillotine Bin Packing** pada lingkungan peramban modern. 
+Proyek purwarupa eksperimental ini dirancang khusus untuk menguji, membandingkan, dan mengukur dampak komputasi berat (_compute-heavy_) dari algoritma **2D Guillotine Bin Packing** pada lingkungan peramban modern.
 
-Tujuan utama proyek ini adalah meneliti fenomena *Main Thread Blocking* dan dampaknya terhadap Web Vitals seperti **Total Blocking Time (TBT)** dan **Interaction to Next Paint (INP)** menggunakan ekosistem Next.js App Router.
+Tujuan utama proyek ini adalah meneliti fenomena _Main Thread Blocking_ dan dampaknya terhadap Web Vitals seperti **Total Blocking Time (TBT)** dan **Interaction to Next Paint (INP)** menggunakan ekosistem Next.js App Router.
 
 ---
 
 ## 🚀 Fitur Utama
 
-- **Algoritma 2D Guillotine Murni:** Utilitas *pure function* untuk kalkulasi pemosisian kotak dalam container tanpa tumpang tindih.
+- **Algoritma 2D Guillotine Murni:** Utilitas _pure function_ untuk kalkulasi pemosisian kotak dalam container tanpa tumpang tindih.
 - **Client-Side Rendering (CSR) Sandbox:** Halaman uji `/test/csr` yang terisolasi untuk mengukur kelumpuhan main thread secara sinkron.
-- **Visualisasi Tanpa CLS:** Komponen visual (`LayoutVisualizer`) dengan dimensi absolut (*fixed*) untuk memastikan *Cumulative Layout Shift* selalu `0.0`.
-- **Automated Performance E2E Testing:** Otomatisasi pengujian beban dengan Playwright yang dijembatani (*bridged*) secara mulus ke Google Lighthouse melalui protokol CDP.
+- **Automated Performance E2E Testing:** Otomatisasi pengujian beban dengan Playwright yang dijembatani (_bridged_) secara mulus ke Google Lighthouse melalui protokol CDP.
 - **Auto-Report JSON:** Hasil benchmark TBT, INP, TTFB dan komputasi diekstrak dan disimpan secara otomatis.
 
 ---
@@ -52,8 +51,8 @@ Pastikan Anda telah menginstal **Node.js (v24+)** dan **npm**.
 
 ```bash
 # 1. Klon repositori ini
-git clone https://github.com/your-username/smart-printing.git
-cd smart-printing
+git clone https://github.com/your-username/rendering-printing.git
+cd rendering-printing
 
 # 2. Instal dependensi Node.js
 npm install
@@ -69,14 +68,19 @@ npx playwright install
 Anda dapat menjalankan antarmuka web dalam dua mode:
 
 ### Mode Development
+
 Digunakan untuk iterasi pengembangan.
+
 ```bash
 npm run dev
 ```
+
 Buka: [http://localhost:3000/test/csr](http://localhost:3000/test/csr)
 
 ### Mode Production (Direkomendasikan untuk Pengujian)
+
 Digunakan untuk merepresentasikan performa asli di dunia nyata.
+
 ```bash
 npm run build
 npm run start
@@ -86,7 +90,7 @@ npm run start
 
 ## ⏱️ Eksekusi Benchmark Otomatis
 
-Skrip *benchmark* mengeksekusi pengujian dengan parameter **4x CPU Throttling** dan **Slow 4G Network** untuk mendapatkan presisi Web Vitals terbaik menggunakan metrik Lighthouse (`Timespan` mode).
+Skrip _benchmark_ mengeksekusi pengujian dengan parameter **4x CPU Throttling** dan **Slow 4G Network** untuk mendapatkan presisi Web Vitals terbaik menggunakan metrik Lighthouse (`Timespan` mode).
 
 Pastikan server Anda sedang menyala (`npm run start` atau `npm run dev`), kemudian buka tab terminal baru dan jalankan:
 
@@ -95,11 +99,13 @@ node tests/benchmark-playwright.mjs --width=1000 --height=1000 --quantity=15
 ```
 
 ### Parameter Skrip:
+
 - `--width`: Lebar container / media cetak utama.
 - `--height`: Tinggi container / media cetak utama.
-- `--quantity`: Jumlah spesifik untuk dieksekusi secara intensif guna memaksa pelambatan *main thread*.
+- `--quantity`: Jumlah spesifik untuk dieksekusi secara intensif guna memaksa pelambatan _main thread_.
 
 ### Output:
+
 Skrip akan mencetak tabel statistik di terminal dan menyimpan file secara otomatis ke:
 `result-test/pengujian-csr-{X}.json`
 

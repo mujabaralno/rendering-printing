@@ -1,5 +1,4 @@
-"use client";
-
+import { useEffect, useRef } from "react";
 import type { PlacedItem, WasteStats } from "@/utils/guillotineAlgorithm";
 
 // ============================================================
@@ -32,22 +31,10 @@ const SCALE = 0.6;
 
 /** Palet warna — cukup banyak untuk variasi visual */
 const COLORS = [
-  "#3b82f6", // blue-500
-  "#ef4444", // red-500
-  "#22c55e", // green-500
-  "#f59e0b", // amber-500
-  "#8b5cf6", // violet-500
-  "#ec4899", // pink-500
-  "#14b8a6", // teal-500
-  "#f97316", // orange-500
-  "#06b6d4", // cyan-500
-  "#a855f7", // purple-500
-  "#84cc16", // lime-500
-  "#e11d48", // rose-600
-  "#0ea5e9", // sky-500
-  "#d946ef", // fuchsia-500
-  "#10b981", // emerald-500
-  "#facc15", // yellow-400
+  "#3b82f6", "#ef4444", "#22c55e", "#f59e0b",
+  "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
+  "#06b6d4", "#a855f7", "#84cc16", "#e11d48",
+  "#0ea5e9", "#d946ef", "#10b981", "#facc15",
 ] as const;
 
 // ============================================================
@@ -57,6 +44,7 @@ const COLORS = [
 const styles = {
   wrapper: {
     fontFamily: "var(--font-mono)",
+    width: "100%",
   },
   statsRow: {
     display: "flex",
@@ -70,30 +58,19 @@ const styles = {
     color: "var(--foreground)",
     fontWeight: 600,
   },
-  container: {
-    position: "relative" as const,
+  canvasContainer: {
+    // Tidak ada pre-alokasi dimensi CSS (width/height fixed).
+    // Ini membiarkan elemen canvas mendorong konten di bawahnya
+    // saat dirender, menghasilkan CLS "murni" sesuai hipotesis penelitian.
+    marginTop: "16px",
     border: "1px solid var(--border)",
     backgroundColor: "var(--background)",
-    overflow: "hidden",
-  },
-  item: {
-    position: "absolute" as const,
-    border: "1px solid rgba(0,0,0,0.3)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxSizing: "border-box" as const,
-  },
-  itemLabel: {
-    fontSize: "9px",
-    color: "#ffffff",
-    fontFamily: "inherit",
-    lineHeight: 1,
-    userSelect: "none" as const,
-    textShadow: "0 1px 2px rgba(0,0,0,0.5)",
+    display: "block",
+    maxWidth: "100%",
+    overflowX: "auto" as const,
   },
   unplacedNotice: {
-    marginTop: "8px",
+    marginTop: "12px",
     fontSize: "12px",
     color: "var(--destructive)",
   },
@@ -103,17 +80,6 @@ const styles = {
 // Component
 // ============================================================
 
-/**
- * Komponen visualisasi murni (Dumb Component).
- *
- * Menerima Array of PlacedItems dan menggambar kotak-kotak
- * di-posisikan absolute di dalam container div.
- *
- * Dimensi container di-set secara eksplisit (width × height)
- * untuk menghindari CLS (Cumulative Layout Shift).
- *
- * data-testid="visualization-result" untuk deteksi Playwright.
- */
 export function LayoutVisualizer({
   placements,
   containerWidth,
@@ -122,10 +88,65 @@ export function LayoutVisualizer({
   totalItemsPlaced,
   totalItemsRequested,
 }: LayoutVisualizerProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  
   const scaledWidth = containerWidth * SCALE;
   const scaledHeight = containerHeight * SCALE;
-
   const unplacedCount = totalItemsRequested - totalItemsPlaced;
+
+  // Render algoritma 2D ke dalam Canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    // Clear background
+    ctx.clearRect(0, 0, scaledWidth, scaledHeight);
+    
+    // Draw background color
+    ctx.fillStyle = "transparent";
+    ctx.fillRect(0, 0, scaledWidth, scaledHeight);
+
+    // Iterasi array item untuk digambar
+    placements.forEach((item) => {
+      const x = item.x * SCALE;
+      const y = item.y * SCALE;
+      const w = item.width * SCALE;
+      const h = item.height * SCALE;
+
+      // Fill color
+      const colorIndex = Number(item.id) % COLORS.length;
+
+      ctx.fillStyle = COLORS[colorIndex];
+      ctx.globalAlpha = 0.85;
+      ctx.fillRect(x, y, w, h);
+
+      // Stroke border
+      ctx.globalAlpha = 1.0;
+      ctx.strokeStyle = "rgba(0,0,0,0.4)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x, y, w, h);
+
+      // Text Label
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "9px Inter, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      
+      const label = `${item.id}${item.rotated ? " ↻" : ""}`;
+      
+      // Shadow untuk teks agar terbaca
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 2;
+      ctx.fillText(label, x + w / 2, y + h / 2);
+      
+      // Reset shadow untuk item berikutnya
+      ctx.shadowBlur = 0;
+    });
+
+  }, [placements, scaledWidth, scaledHeight]);
 
   return (
     <div style={styles.wrapper} data-testid="visualization-result">
@@ -157,33 +178,14 @@ export function LayoutVisualizer({
         </span>
       </div>
 
-      {/* Container visualization — fixed dimensions for zero CLS */}
-      <div
-        style={{
-          ...styles.container,
-          width: scaledWidth,
-          height: scaledHeight,
-        }}
-      >
-        {placements.map((item) => (
-          <div
-            key={item.id}
-            style={{
-              ...styles.item,
-              left: item.x * SCALE,
-              top: item.y * SCALE,
-              width: item.width * SCALE,
-              height: item.height * SCALE,
-              backgroundColor: COLORS[item.id % COLORS.length],
-              opacity: 0.85,
-            }}
-          >
-            <span style={styles.itemLabel}>
-              {item.id}
-              {item.rotated ? " ↻" : ""}
-            </span>
-          </div>
-        ))}
+      {/* Canvas Element (Responsive container) */}
+      <div style={styles.canvasContainer}>
+        <canvas
+          ref={canvasRef}
+          width={scaledWidth}
+          height={scaledHeight}
+          style={{ display: "block" }}
+        />
       </div>
 
       {/* Unplaced items warning */}

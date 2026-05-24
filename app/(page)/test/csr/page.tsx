@@ -58,6 +58,14 @@ const styles = {
     color: "var(--primary)",
     marginBottom: "16px",
   },
+  footer: {
+    marginTop: "64px",
+    paddingTop: "24px",
+    borderTop: "1px solid var(--border)",
+    fontSize: "12px",
+    color: "var(--muted-foreground)",
+    textAlign: "center" as const,
+  },
 } as const;
 
 // ============================================================
@@ -137,7 +145,7 @@ export default function CSRStressTestPage() {
             </div>
           )}
 
-          {/* Visualization — fixed-dimension container for zero CLS */}
+          {/* Visualization — Element is rendered dynamically to test natural CLS */}
           {result && (
             <LayoutVisualizer
               placements={result.placements}
@@ -149,6 +157,15 @@ export default function CSRStressTestPage() {
             />
           )}
         </div>
+      </div>
+
+      {/* 
+        Elemen di bawah ini sengaja ditambahkan agar kemunculan Canvas secara 
+        tiba-tiba mendorong elemen ini ke bawah, sehingga menciptakan 
+        "Natural CLS" (pergeseran tata letak) yang murni untuk diukur Lighthouse.
+      */}
+      <div style={styles.footer}>
+        End of Document. Rendering blocking test baseline.
       </div>
     </div>
   );
