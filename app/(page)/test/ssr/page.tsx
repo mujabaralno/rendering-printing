@@ -1,11 +1,11 @@
 "use client";
 
-import { useSSRBinPacking } from "@/hooks/useSSRBinPacking";
+import { useSSRExactBinPacking } from "@/hooks/useSSRExactBinPacking";
 import { ControlPanel } from "@/components/ControlPanel";
 import { LayoutVisualizer } from "@/components/LayoutVisualizer";
 
 // ============================================================
-// Styles — Minimal inline styles, no CSS animations
+// Styles
 // ============================================================
 
 const styles = {
@@ -21,7 +21,7 @@ const styles = {
   title: {
     fontSize: "16px",
     fontWeight: 700,
-    color: "var(--foreground)",
+    color: "var(--primary)", // Menggunakan warna primer untuk membedakan dari CSR yang destruktif
     margin: 0,
   },
   subtitle: {
@@ -58,14 +58,27 @@ const styles = {
     color: "var(--primary)",
     marginBottom: "16px",
   },
-  errorMsg: {
+  serverNotice: {
+    fontSize: "11px",
+    color: "var(--primary)",
+    border: "1px solid var(--primary)",
+    padding: "8px",
+    borderRadius: "4px",
+    marginBottom: "16px",
+    backgroundColor: "rgba(59, 130, 246, 0.1)", // blue tint
+  },
+  error: {
     fontSize: "13px",
     color: "var(--destructive)",
     marginBottom: "16px",
-    padding: "12px",
-    backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)",
-    border: "1px solid color-mix(in srgb, var(--destructive) 30%, transparent)",
-    borderRadius: "var(--radius)",
+  },
+  footer: {
+    marginTop: "64px",
+    paddingTop: "24px",
+    borderTop: "1px solid var(--border)",
+    fontSize: "12px",
+    color: "var(--muted-foreground)",
+    textAlign: "center" as const,
   },
 } as const;
 
@@ -74,22 +87,24 @@ const styles = {
 // ============================================================
 
 /**
- * Halaman Stress Test SSR — 2D Guillotine Bin Packing
+ * Halaman EXACT 2D Guillotine Bin Packing — Server-Side (SSR)
  *
- * Entry point terisolasi untuk pengujian performa Server-Side Rendering
- * via Next.js Server Actions.
- * - Komputasi didelegasikan ke backend Node.js.
- * - Komponen UI (ControlPanel, LayoutVisualizer) didaur ulang dari CSR.
- * - Menggunakan React 19 useTransition untuk state "pending".
+ * Menggunakan algoritma MURNI (Brute-Force/Recursive Backtracking) NP-Hard.
+ * Komputasi ini DIDELEGASIKAN ke server (Node.js backend).
+ *
+ * Meskipun algoritmanya memakan waktu sangat lama (eksponensial),
+ * karena dieksekusi di server, Main Thread peramban (client) TETAP BEBAS
+ * dan tidak akan memunculkan "Page Unresponsive". Ini adalah inti perbandingan
+ * untuk skripsi yang membuktikan keunggulan SSR dalam menangani beban berat.
  */
-export default function SSRStressTestPage() {
+export default function ExactBinPackingSSRPage() {
   const {
     containerWidth,
     containerHeight,
     items,
     result,
     executionTime,
-    isComputing, // Ini sekarang dikontrol oleh useTransition() (isPending)
+    isComputing,
     error,
     updateContainerWidth,
     updateContainerHeight,
@@ -97,19 +112,22 @@ export default function SSRStressTestPage() {
     removeItem,
     updateItem,
     runPacking,
-  } = useSSRBinPacking();
+  } = useSSRExactBinPacking();
 
   return (
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
         <h1 style={styles.title}>
-          SSR Stress Test — 2D Guillotine Bin Packing
+          EXACT 2D Guillotine Bin Packing (NP-Hard) — SSR
         </h1>
         <p style={styles.subtitle}>
-          Server Action computation · Node.js thread blocking · SRT
-          instrumentation
+          Recursive Backtracking · Asynchronous Server Action · Unblocked Main Thread
         </p>
+      </div>
+
+      <div style={styles.serverNotice}>
+        ℹ INFORMASI: Komputasi NP-Hard ini dieksekusi di Server (Node.js). Meskipun durasi komputasinya memakan waktu eksponensial (karena mencoba jutaan permutasi), tab peramban Anda <b>TIDAK AKAN CRASH</b> karena Main Thread tetap bebas (TBT = 0).
       </div>
 
       {/* Two-column layout */}
@@ -126,34 +144,34 @@ export default function SSRStressTestPage() {
             onRemoveItem={removeItem}
             onUpdateItem={updateItem}
             onRun={runPacking}
-            isComputing={isComputing} // UI akan disable saat Server Action berjalan
+            isComputing={isComputing}
           />
         </div>
 
         {/* Right: Results */}
         <div style={styles.resultColumn}>
           {/* Error Message */}
-          {error && <div style={styles.errorMsg}>{error}</div>}
+          {error && <div style={styles.error}>❌ {error}</div>}
 
-          {/* Pending / Computing indicator */}
+          {/* Computing indicator */}
           {isComputing && (
             <div style={styles.computing}>
-              📡 Menunggu respons dari server (Server Action executing)...
+              ⏳ Mengirim payload ke Server... Menunggu Server Node.js menghitung permutasi eksponensial NP-Hard... (Browser tetap responsif!)
             </div>
           )}
 
-          {/* Execution time & Metrics */}
+          {/* Execution time */}
           {executionTime !== null && result && (
             <div style={styles.metrics}>
               <span>
-                ⏱ Server Roundtrip Time:{" "}
+                ⏱ Server Execution Time + Network Roundtrip:{" "}
                 <span style={styles.metricValue}>{executionTime}ms</span>
               </span>
             </div>
           )}
 
-          {/* Visualization — Menggunakan ulang komponen Dumb Component CSR */}
-          {result && (
+          {/* Visualization */}
+          {result && !isComputing && (
             <LayoutVisualizer
               placements={result.placements}
               containerWidth={result.containerWidth}
@@ -164,6 +182,11 @@ export default function SSRStressTestPage() {
             />
           )}
         </div>
+      </div>
+
+      {/* Footer untuk memicu CLS saat Canvas dari server dirender */}
+      <div style={styles.footer}>
+        End of Document. Natural CLS baseline for Exact SSR Algorithm.
       </div>
     </div>
   );

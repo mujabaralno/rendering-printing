@@ -1,11 +1,11 @@
 "use client";
 
-import { useExactBinPacking } from "@/hooks/useExactBinPacking";
+import { useSSRBinPacking } from "@/hooks/useSSRBinPacking";
 import { ControlPanel } from "@/components/ControlPanel";
 import { LayoutVisualizer } from "@/components/LayoutVisualizer";
 
 // ============================================================
-// Styles — Minimal inline styles
+// Styles — Minimal inline styles, no CSS animations
 // ============================================================
 
 const styles = {
@@ -21,7 +21,7 @@ const styles = {
   title: {
     fontSize: "16px",
     fontWeight: 700,
-    color: "var(--primary)", // Warna peringatan karena algoritma ini berat
+    color: "var(--foreground)",
     margin: 0,
   },
   subtitle: {
@@ -58,22 +58,14 @@ const styles = {
     color: "var(--primary)",
     marginBottom: "16px",
   },
-  warning: {
-    fontSize: "11px",
+  errorMsg: {
+    fontSize: "13px",
     color: "var(--destructive)",
-    border: "1px solid var(--destructive)",
-    padding: "8px",
-    borderRadius: "4px",
     marginBottom: "16px",
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-  },
-  footer: {
-    marginTop: "64px",
-    paddingTop: "24px",
-    borderTop: "1px solid var(--border)",
-    fontSize: "12px",
-    color: "var(--muted-foreground)",
-    textAlign: "center" as const,
+    padding: "12px",
+    backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+    border: "1px solid color-mix(in srgb, var(--destructive) 30%, transparent)",
+    borderRadius: "var(--radius)",
   },
 } as const;
 
@@ -82,35 +74,41 @@ const styles = {
 // ============================================================
 
 /**
- * Halaman EXACT 2D Guillotine Bin Packing
+ * Halaman Stress Test SSR — 2D Guillotine Bin Packing
  *
- * Menggunakan algoritma MURNI (Brute-Force/Recursive Backtracking)
- * tanpa heuristic dan tanpa delay simulasi artifisial.
- * Sifat NP-Hard asli akan terasa jika nilai N dinaikkan > 15.
+ * Entry point terisolasi untuk pengujian performa Server-Side Rendering
+ * via Next.js Server Actions.
+ * - Komputasi didelegasikan ke backend Node.js.
+ * - Komponen UI (ControlPanel, LayoutVisualizer) didaur ulang dari CSR.
+ * - Menggunakan React 19 useTransition untuk state "pending".
  */
-export default function ExactBinPackingPage() {
+export default function SSRStressTestPage() {
   const {
     containerWidth,
     containerHeight,
     items,
     result,
     executionTime,
-    isComputing,
+    isComputing, // Ini sekarang dikontrol oleh useTransition() (isPending)
+    error,
     updateContainerWidth,
     updateContainerHeight,
     addItem,
     removeItem,
     updateItem,
     runPacking,
-  } = useExactBinPacking();
+  } = useSSRBinPacking();
 
   return (
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>2D Guillotine Bin Packing (NP-Hard)</h1>
+        <h1 style={styles.title}>
+          SSR Stress Test — 2D Guillotine Bin Packing
+        </h1>
         <p style={styles.subtitle}>
-          Recursive Backtracking · O(2^n * poly(n)) · Pure Main Thread Blocking
+          Server Action computation · Node.js thread blocking · SRT
+          instrumentation
         </p>
       </div>
 
@@ -128,31 +126,33 @@ export default function ExactBinPackingPage() {
             onRemoveItem={removeItem}
             onUpdateItem={updateItem}
             onRun={runPacking}
-            isComputing={isComputing}
+            isComputing={isComputing} // UI akan disable saat Server Action berjalan
           />
         </div>
 
         {/* Right: Results */}
         <div style={styles.resultColumn}>
-          {/* Computing indicator */}
+          {/* Error Message */}
+          {error && <div style={styles.errorMsg}>{error}</div>}
+
+          {/* Pending / Computing indicator */}
           {isComputing && (
             <div style={styles.computing}>
-              ⚠ Main thread sedang diblokir oleh komputasi eksponensial
-              NP-Hard...
+              📡 Menunggu respons dari server (Server Action executing)...
             </div>
           )}
 
-          {/* Execution time */}
+          {/* Execution time & Metrics */}
           {executionTime !== null && result && (
             <div style={styles.metrics}>
               <span>
-                ⏱ Execution:{" "}
+                ⏱ Server Roundtrip Time:{" "}
                 <span style={styles.metricValue}>{executionTime}ms</span>
               </span>
             </div>
           )}
 
-          {/* Visualization */}
+          {/* Visualization — Menggunakan ulang komponen Dumb Component CSR */}
           {result && (
             <LayoutVisualizer
               placements={result.placements}
@@ -164,11 +164,6 @@ export default function ExactBinPackingPage() {
             />
           )}
         </div>
-      </div>
-
-      {/* Footer untuk memicu CLS saat Canvas dirender */}
-      <div style={styles.footer}>
-        End of Document. Natural CLS baseline for Exact Algorithm.
       </div>
     </div>
   );

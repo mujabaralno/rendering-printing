@@ -2,8 +2,8 @@
 
 import { useState, useCallback, useTransition } from "react";
 import type { ItemEntry } from "@/hooks/useBinPacking";
-import { type PackingResult } from "@/utils/guillotineAlgorithm";
-import { runBinPackingAction } from "@/actions/binPackingAction";
+import { type PackingResult } from "@/utils/exactGuillotine";
+import { runExactBinPackingAction } from "@/actions/exactBinPackingAction";
 
 // ============================================================
 // Constants
@@ -23,25 +23,19 @@ let itemIdCounter = 2;
 // ============================================================
 
 /**
- * Custom hook untuk mengelola state SSR Bin Packing stress test.
- *
- * Mengelola state input secara lokal, tetapi mendelegasikan komputasi
- * algoritma ke server menggunakan Server Action dan useTransition.
+ * Custom hook untuk mengelola state Exact SSR Bin Packing.
+ * Komputasi MURNI NP-Hard ini dilempar ke server menggunakan Server Action.
  */
-export function useSSRBinPacking() {
-  // Container dimensions
+export function useSSRExactBinPacking() {
   const [containerWidth, setContainerWidth] = useState(DEFAULT_CONTAINER_WIDTH);
   const [containerHeight, setContainerHeight] = useState(DEFAULT_CONTAINER_HEIGHT);
-
-  // Items list
   const [items, setItems] = useState<ItemEntry[]>(DEFAULT_ITEMS);
 
-  // Execution results
   const [result, setResult] = useState<PackingResult | null>(null);
   const [executionTime, setExecutionTime] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // React 19: useTransition for concurrent rendering features
+  // React 19: useTransition agar UI peramban tetap responsif selama server berpikir keras
   const [isPending, startTransition] = useTransition();
 
   // ---- Container Actions ----
@@ -84,7 +78,6 @@ export function useSSRBinPacking() {
   // ---- Execution ----
 
   const runPacking = useCallback(() => {
-    // Convert ItemEntry[] → InputItem[] untuk dikirim ke server
     const inputItems = items.map((entry) => ({
       width: entry.width,
       height: entry.height,
@@ -97,7 +90,7 @@ export function useSSRBinPacking() {
     // Memulai transisi untuk Server Action
     startTransition(async () => {
       try {
-        const packingResult = await runBinPackingAction(
+        const packingResult = await runExactBinPackingAction(
           containerWidth,
           containerHeight,
           inputItems
@@ -107,15 +100,13 @@ export function useSSRBinPacking() {
         setResult(packingResult);
         setExecutionTime(Math.round(end - start));
       } catch (err) {
-        console.error("Error during server action:", err);
-        setError("Terjadi kesalahan saat memproses data di server.");
+        console.error("Error during exact server action:", err);
+        setError("Terjadi kesalahan saat memproses algoritma NP-Hard di server.");
         setResult(null);
         setExecutionTime(null);
       }
     });
   }, [containerWidth, containerHeight, items]);
-
-  // ---- Reset ----
 
   const resetResults = useCallback(() => {
     setResult(null);
@@ -124,7 +115,6 @@ export function useSSRBinPacking() {
   }, []);
 
   return {
-    // State
     containerWidth,
     containerHeight,
     items,
@@ -132,17 +122,11 @@ export function useSSRBinPacking() {
     executionTime,
     isComputing: isPending,
     error,
-
-    // Container actions
     updateContainerWidth,
     updateContainerHeight,
-
-    // Item actions
     addItem,
     removeItem,
     updateItem,
-
-    // Execution
     runPacking,
     resetResults,
   };

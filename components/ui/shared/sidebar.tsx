@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Plus, ClipboardCheck, Server, EarthIcon } from "lucide-react";
+import { Plus, ClipboardCheck, Server, EarthIcon, Printer } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -53,8 +53,8 @@ export function AdminSidebar() {
       <SidebarContent className="p-4 bg-background">
         <SidebarGroup>
           {/* Label khusus untuk Admin Panel */}
-          <SidebarGroupLabel className="mb-4 px-2 text-md font-bold uppercase tracking-[0.2em] text-primary">
-            Smart Printing
+          <SidebarGroupLabel className="mb-4 px-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
+            <Printer className="mr-2" /> Smart Printing
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
@@ -105,7 +105,7 @@ export function AdminSidebar() {
                                   w-full transition-all duration-300 ease-out px-3 py-4 rounded-lg
                                   ${
                                     isSubActive
-                                      ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/95"
+                                      ? "bg-primary text-primary-foreground shadow-sm shadow-primary/20 hover:bg-primary/95"
                                       : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                                   }
                                 `}
@@ -114,7 +114,10 @@ export function AdminSidebar() {
                                   href={subItem.url}
                                   className="flex items-center gap-3"
                                 >
-                                  <subItem.icon className="h-4 w-4" />
+                                  <subItem.icon
+                                    className={`transition-all duration-300 ${isSubActive ? "scale-110 " : "group-hover:scale-110"}`}
+                                    color={`${isSubActive ? "white" : "var(--muted-foreground)"}`}
+                                  />
                                   <span className="font-medium text-sm">
                                     {subItem.title}
                                   </span>

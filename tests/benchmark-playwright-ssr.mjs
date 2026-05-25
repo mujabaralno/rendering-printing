@@ -5,16 +5,15 @@ import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// 1. Parsing argumen CLI (e.g. --width=1000 --height=1000 --quantity=15 --url=/test/csr)
+// 1. Parsing argumen CLI (e.g. --width=1000 --height=1000 --quantity=15)
 const options = {
   width: { type: 'string', default: '1000' },
   height: { type: 'string', default: '1000' },
   quantity: { type: 'string', default: '15' },
-  url: { type: 'string', default: '/test/csr' },
 };
 const { values } = parseArgs({ args: process.argv.slice(2), options });
 
-const TARGET_URL = `http://localhost:3000${values.url}`;
+const TARGET_URL = 'https://rendering-printing.vercel.app/test/ssr'
 const PORT = 9222;
 
 /**
@@ -41,17 +40,17 @@ if (!fs.existsSync(RESULT_DIR)) {
 const existingFiles = fs.readdirSync(RESULT_DIR);
 let maxNum = 0;
 existingFiles.forEach(file => {
-  const match = file.match(/^pengujian-csr-(\d+)\.json$/);
+  const match = file.match(/^pengujian-ssr-(\d+)\.json$/);
   if (match) {
     const num = parseInt(match[1], 10);
     if (num > maxNum) maxNum = num;
   }
 });
 const nextNum = maxNum + 1;
-const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-csr-${nextNum}.json`);
+const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-ssr-${nextNum}.json`);
 
 async function runBenchmark() {
-  console.log(`\n🚀 Memulai Benchmark CSR dengan N=${values.quantity}`);
+  console.log(`\n🚀 Memulai Benchmark SSR dengan N=${values.quantity}`);
   console.log(`Dimensi Container: ${values.width} x ${values.height}\n`);
 
   // 3. Manajemen Port & Browser: Launch Playwright dengan port debugging
@@ -96,16 +95,6 @@ async function runBenchmark() {
     console.log('📝 Mengisi parameter form...');
     await page.locator('[data-testid="input-width"]').fill(values.width);
     await page.locator('[data-testid="input-height"]').fill(values.height);
-    
-    // Hapus baris item ekstra agar total N benar-benar murni sesuai argumen `--quantity`
-    // Default form memiliki 3 baris item. Kita hapus baris 2 dan 3.
-    const removeBtns = page.locator('[data-testid="remove-item-btn"]');
-    const count = await removeBtns.count();
-    for (let i = 1; i < count; i++) {
-      // Selalu klik indeks 1 karena baris bergeser naik setiap kali dihapus
-      await removeBtns.nth(1).click();
-    }
-
     await page.locator('[data-testid="input-quantity"]').first().fill(values.quantity);
 
     // ==========================================
@@ -114,7 +103,7 @@ async function runBenchmark() {
     const browserURL = `http://localhost:${PORT}`;
     pBrowser = await puppeteer.connect({ browserURL });
     const pages = await pBrowser.pages();
-    const pPage = pages.find(p => p.url().includes('localhost:3000')) || pages[0];
+    const pPage = pages.find(p => p.url().includes('localhost:3000') || p.url().includes('rendering-printing')) || pages[0];
 
     // Step 4: Mulai Lighthouse Mode TIMESPAN
     console.log('⏱  Memulai Lighthouse (TIMESPAN mode)...');
@@ -130,11 +119,48 @@ async function runBenchmark() {
 
     // Step 5: Eksekusi melalui CDP dispatch (bukan JS evaluate agar INP terekam optimal)
     console.log('▶️  Menjalankan komputasi algoritma...');
+    
+    // Setup listener untuk mengukur Server Response Time dari aksi form
+    let serverResponseTimeMs = 0;
+    const requestPromise = new Promise(resolve => {
+      const startTimes = new Map();
+      
+      const onReq = (req) => {
+        // Asumsi form submit menggunakan POST (Server Actions) atau memicu navigasi
+        if (req.method() === 'POST' || req.isNavigationRequest()) {
+          startTimes.set(req.url(), Date.now());
+        }
+      };
+      
+      const onRes = (res) => {
+        const req = res.request();
+        if (req.method() === 'POST' || req.isNavigationRequest()) {
+          if (startTimes.has(req.url())) {
+            const srt = Date.now() - startTimes.get(req.url());
+            page.removeListener('request', onReq);
+            page.removeListener('response', onRes);
+            resolve(srt);
+          }
+        }
+      };
+      
+      page.on('request', onReq);
+      page.on('response', onRes);
+      
+      // Fallback timeout
+      setTimeout(() => resolve(0), 60000);
+    });
+
     const startTime = Date.now();
     await page.click('[data-testid="generate-btn"]');
 
-    // Step 6: Tunggu visualisasi muncul (Timeout 60 detik)
-    console.log('⏳ Menunggu hasil visualisasi (compute-heavy blocking)...');
+    console.log('⏳ Menunggu respons server dan hasil visualisasi (compute-heavy blocking)...');
+    
+    serverResponseTimeMs = await requestPromise;
+    if (serverResponseTimeMs > 0) {
+      console.log(`⏱  Server Response Time (Action) tercatat: ${serverResponseTimeMs} ms`);
+    }
+
     await page.waitForSelector('[data-testid="visualization-result"]', {
       state: 'attached',
       timeout: 60000,
@@ -154,10 +180,11 @@ async function runBenchmark() {
     const inp = timespanLhr.audits['interaction-to-next-paint']?.numericValue || 0;
 
     console.log('\n======================================================');
-    console.log('📊 HASIL BENCHMARK (CSR) - 2D Guillotine Bin Packing');
+    console.log('📊 HASIL BENCHMARK (SSR) - 2D Guillotine Bin Packing');
     console.log('======================================================');
     console.table([
-      { Metric: 'Time to First Byte (TTFB)', Value: `${ttfb.toFixed(2)} ms` },
+      { Metric: 'Initial Load TTFB', Value: `${ttfb.toFixed(2)} ms` },
+      { Metric: 'Action Server Response Time', Value: `${serverResponseTimeMs} ms` },
       { Metric: 'Total Blocking Time (TBT)', Value: `${tbt.toFixed(2)} ms` },
       { Metric: 'Interaction to Next Paint (INP)', Value: `${inp.toFixed(2)} ms` },
       { Metric: 'Cumulative Layout Shift (CLS)', Value: `${cls.toFixed(4)}` },
@@ -168,14 +195,15 @@ async function runBenchmark() {
     // 7. Simpan Hasil ke JSON
     const finalData = {
       timestamp: new Date().toISOString(),
-      scenario: 'Client-Side Rendering (CSR)',
+      scenario: 'Server-Side Rendering (SSR)',
       parameters: {
         width: parseInt(values.width, 10),
         height: parseInt(values.height, 10),
         quantity: parseInt(values.quantity, 10),
       },
       metrics: {
-        TTFB_ms: parseFloat(ttfb.toFixed(2)),
+        InitialLoad_TTFB_ms: parseFloat(ttfb.toFixed(2)),
+        Action_ServerResponseTime_ms: serverResponseTimeMs,
         TBT_ms: parseFloat(tbt.toFixed(2)),
         INP_ms: parseFloat(inp.toFixed(2)),
         CLS: parseFloat(cls.toFixed(4)),

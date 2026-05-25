@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-05-25T00:42:33.719Z",
+  "scenario": "Server-Side Rendering (SSR)",
+  "parameters": {
+    "width": 1000,
+    "height": 1000,
+    "quantity": 50
+  },
+  "metrics": {
+    "InitialLoad_TTFB_ms": 26,
+    "Action_ServerResponseTime_ms": 5385,
+    "TBT_ms": 40.85,
+    "INP_ms": 101.32,
+    "CLS": 0,
+    "ExecutionTime_ms": 5608
+  }
+}

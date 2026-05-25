@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-05-24T15:49:45.703Z",
+  "timestamp": "2026-05-25T00:40:22.686Z",
   "scenario": "Client-Side Rendering (CSR)",
   "parameters": {
     "width": 1000,
@@ -7,10 +7,10 @@
     "quantity": 50
   },
   "metrics": {
-    "TTFB_ms": 29,
-    "TBT_ms": 30.66,
-    "INP_ms": 85.06,
+    "TTFB_ms": 2,
+    "TBT_ms": 9478.69,
+    "INP_ms": 9583.6,
     "CLS": 0,
-    "ExecutionTime_ms": 8437
+    "ExecutionTime_ms": 9736
   }
 }

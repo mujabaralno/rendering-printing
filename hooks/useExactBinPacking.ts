@@ -2,47 +2,23 @@
 
 import { useState, useCallback } from "react";
 import {
-  guillotineBinPack,
+  exactGuillotineBinPack,
   type InputItem,
   type PackingResult,
-} from "@/utils/guillotineAlgorithm";
-
-// ============================================================
-// Types
-// ============================================================
-
-/** Item entry dalam form control panel */
-export interface ItemEntry {
-  id: string;
-  width: number;
-  height: number;
-  quantity: number;
-}
-
-/** State lengkap yang dikelola oleh hook */
-export interface BinPackingState {
-  containerWidth: number;
-  containerHeight: number;
-  items: ItemEntry[];
-  result: PackingResult | null;
-  executionTime: number | null;
-  isComputing: boolean;
-}
+} from "@/utils/exactGuillotine";
+import type { ItemEntry } from "@/hooks/useBinPacking"; // Reuse type from CSR hook
 
 // ============================================================
 // Constants
 // ============================================================
 
-/** Dimensi container default (mm) */
 const DEFAULT_CONTAINER_WIDTH = 650;
 const DEFAULT_CONTAINER_HEIGHT = 1000;
 
-/** Item template default untuk quick start */
 const DEFAULT_ITEMS: ItemEntry[] = [
-  { id: "item-1", width: 210, height: 297, quantity: 5 },
+  { id: "item-1", width: 210, height: 297, quantity: 3 },
 ];
 
-/** Counter untuk unique ID */
 let itemIdCounter = 2;
 
 // ============================================================
@@ -50,26 +26,14 @@ let itemIdCounter = 2;
 // ============================================================
 
 /**
- * Custom hook untuk mengelola state CSR Bin Packing stress test.
- *
- * Mengelola:
- * - Container dimensions (width × height)
- * - List of items (width, height, quantity per entry)
- * - Execution result (placed items + waste stats)
- * - Loading state & execution time measurement
- *
- * Eksekusi algoritma berjalan SINKRON di main thread
- * tanpa Web Workers — sengaja untuk stress test TBT.
+ * Custom hook untuk mengelola state Exact Bin Packing.
+ * Komputasi berjalan secara SINKRON untuk memicu TBT.
  */
-export function useBinPacking() {
-  // Container dimensions
+export function useExactBinPacking() {
   const [containerWidth, setContainerWidth] = useState(DEFAULT_CONTAINER_WIDTH);
   const [containerHeight, setContainerHeight] = useState(DEFAULT_CONTAINER_HEIGHT);
-
-  // Items list
   const [items, setItems] = useState<ItemEntry[]>(DEFAULT_ITEMS);
 
-  // Execution results
   const [result, setResult] = useState<PackingResult | null>(null);
   const [executionTime, setExecutionTime] = useState<number | null>(null);
   const [isComputing, setIsComputing] = useState(false);
@@ -116,10 +80,7 @@ export function useBinPacking() {
   const runPacking = useCallback(() => {
     setIsComputing(true);
 
-    // requestAnimationFrame agar React sempat commit render "Computing..."
-    // sebelum main thread diblokir oleh komputasi sinkron
     requestAnimationFrame(() => {
-      // Convert ItemEntry[] → InputItem[] untuk algoritma
       const inputItems: InputItem[] = items.map((entry) => ({
         width: entry.width,
         height: entry.height,
@@ -127,11 +88,14 @@ export function useBinPacking() {
       }));
 
       const start = performance.now();
-      const packingResult = guillotineBinPack(
+      
+      // Execute the NP-Hard exact algorithm
+      const packingResult = exactGuillotineBinPack(
         containerWidth,
         containerHeight,
         inputItems
       );
+      
       const end = performance.now();
 
       setResult(packingResult);
@@ -140,32 +104,23 @@ export function useBinPacking() {
     });
   }, [containerWidth, containerHeight, items]);
 
-  // ---- Reset ----
-
   const resetResults = useCallback(() => {
     setResult(null);
     setExecutionTime(null);
   }, []);
 
   return {
-    // State
     containerWidth,
     containerHeight,
     items,
     result,
     executionTime,
     isComputing,
-
-    // Container actions
     updateContainerWidth,
     updateContainerHeight,
-
-    // Item actions
     addItem,
     removeItem,
     updateItem,
-
-    // Execution
     runPacking,
     resetResults,
   };

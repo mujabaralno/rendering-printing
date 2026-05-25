@@ -247,6 +247,7 @@ function ItemRow({
         type="button"
         onClick={() => onRemove(item.id)}
         style={styles.removeBtn}
+        data-testid="remove-item-btn"
       >
         ×
       </button>
