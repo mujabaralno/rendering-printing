@@ -39,7 +39,7 @@ const DEFAULT_CONTAINER_HEIGHT = 1000;
 
 /** Item template default untuk quick start */
 const DEFAULT_ITEMS: ItemEntry[] = [
-  { id: "item-1", width: 210, height: 297, quantity: 5 },
+  { id: "item-1", width: 90, height: 55, quantity: 50 },
 ];
 
 /** Counter untuk unique ID */

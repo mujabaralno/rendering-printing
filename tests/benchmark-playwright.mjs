@@ -5,7 +5,7 @@ import { parseArgs } from 'node:util';
 import fs from 'node:fs';
 import path from 'node:path';
 
-// 1. Parsing argumen CLI (e.g. --width=1000 --height=1000 --quantity=15 --url=/test/csr)
+
 const options = {
   width: { type: 'string', default: '1000' },
   height: { type: 'string', default: '1000' },

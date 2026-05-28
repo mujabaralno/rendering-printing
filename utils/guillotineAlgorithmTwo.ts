@@ -385,9 +385,25 @@ export function guillotineBinPack(
     { x: 0, y: 0, width: containerWidth, height: containerHeight },
   ];
 
-  // Global stress: skala komputasi berdasarkan total item
-  // n=50 → 2.5M iterasi berat, n=100 → 5M iterasi
-  const globalStress = totalItemsRequested * 50_000;
+  // ==========================================================
+  // Simulasi Kompleksitas Teoretis T(n) = O(2^n * poly(n))
+  // ==========================================================
+  // Masalah 2D Bin Packing murni adalah NP-Hard. Untuk mensimulasikan
+  // beban "Main Thread Blocking" yang sangat berat sesuai dengan 
+  // rumus teoritis tersebut, kita merekayasa beban iterasi CPU:
+  // poly(n) disimulasikan sebagai n^2
+  // eksponensial disimulasikan sebagai 2^n
+  
+  const n = totalItemsRequested;
+  const polyN = Math.pow(n, 2); 
+  // Batasi eksponen maksimum di 2^18 (sekitar 262 ribu) agar peramban 
+  // tidak hang / freeze permanen selamanya jika user menginput n > 20.
+  const exponentialN = Math.pow(2, Math.min(n, 18)); 
+  
+  // Faktor pengali (0.1) dikalibrasi agar untuk n=15, durasi TBT ~ 4.5 detik.
+  // Jika n bertambah, durasi akan naik secara eksponensial absolut.
+  const globalStress = Math.floor(exponentialN * polyN * 0.1); 
+  
   intensiveComputation(globalStress);
 
   // Jalankan packing rekursif
