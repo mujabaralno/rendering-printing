@@ -13,7 +13,7 @@ const DEFAULT_CONTAINER_WIDTH = 650;
 const DEFAULT_CONTAINER_HEIGHT = 1000;
 
 const DEFAULT_ITEMS: ItemEntry[] = [
-  { id: "item-1", width: 210, height: 297, quantity: 3 },
+  { id: "item-1", width: 90, height: 55, quantity: 10 },
 ];
 
 let itemIdCounter = 2;

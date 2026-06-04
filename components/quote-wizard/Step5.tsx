@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuoteStore } from "@/store/useQuoteStore";
+import { generateQuotationPdf } from "@/utils/generatePdf";
 
 export default function Step5() {
   const prevStep = useQuoteStore((state) => state.prevStep);
@@ -87,6 +88,17 @@ export default function Step5() {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(val);
+  };
+
+  const handleDownloadPdf = (type: 'customer' | 'ops') => {
+    generateQuotationPdf({
+      type,
+      customerData: useQuoteStore.getState().customerData,
+      productDetails: useQuoteStore.getState().productDetails,
+      opDetails: useQuoteStore.getState().operationalDetails,
+      calculationSnapshot: useQuoteStore.getState().calculationSnapshot,
+      discountDetails: useQuoteStore.getState().discountDetails,
+    });
   };
 
   return (
@@ -274,6 +286,7 @@ export default function Step5() {
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           <div className="flex gap-2">
             <button
+              onClick={() => handleDownloadPdf('customer')}
               disabled={isSaving}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors shadow-sm border border-border/50"
               title="Customer Copy (No internal costs)"
@@ -282,6 +295,7 @@ export default function Step5() {
               Customer PDF
             </button>
             <button
+              onClick={() => handleDownloadPdf('ops')}
               disabled={isSaving}
               className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 bg-secondary text-secondary-foreground rounded-lg text-sm font-medium hover:bg-secondary/80 transition-colors shadow-sm border border-border/50"
               title="Operations Copy (With margins & costs)"

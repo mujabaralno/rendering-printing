@@ -12,7 +12,7 @@ const options = {
   width:      { type: 'string', default: '1000' },
   height:     { type: 'string', default: '1000' },
   quantity:   { type: 'string', default: '50' },
-  url:        { type: 'string', default: '/csr' },
+  url:        { type: 'string', default: '/create-quote/csr' },
   iterations: { type: 'string', default: '30' },
   cooldown:   { type: 'string', default: '10' },
 };
@@ -24,10 +24,7 @@ const ITERATIONS   = parseInt(values.iterations, 10);
 const COOLDOWN_SEC = parseInt(values.cooldown, 10);
 
 // ============================================================
-// Lighthouse Throttling (devtools mode)
-// Navigation: Untuk TTFB baseline
-// Timespan:   Untuk TBT, INP, CLS (membuktikan H1 & H3 bahwa CSR
-//             memblokir main thread → TBT/INP tinggi)
+// Lighthouse Throttling (Skenario Makro - DevTools Throttling)
 // ============================================================
 const customThrottling = {
   rttMs: 150,
@@ -46,21 +43,20 @@ if (!fs.existsSync(RESULT_DIR)) {
   fs.mkdirSync(RESULT_DIR, { recursive: true });
 }
 
-// Menentukan nomor urut file
 const existingFiles = fs.readdirSync(RESULT_DIR);
 let maxNum = 0;
 existingFiles.forEach(file => {
-  const match = file.match(/^pengujian-csr-(\d+)\.json$/);
+  const match = file.match(/^pengujian-macro-csr-(\d+)\.csv$/);
   if (match) {
     const num = parseInt(match[1], 10);
     if (num > maxNum) maxNum = num;
   }
 });
 const nextNum = maxNum + 1;
-const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-csr-${nextNum}-${values.quantity}.json`);
+const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-macro-csr-${nextNum}-${values.quantity}.csv`);
 
 // ============================================================
-// Helper: Sleep / Jeda antar iterasi (Thermal Throttling Control)
+// Helper: Sleep
 // ============================================================
 function sleep(seconds) {
   return new Promise(resolve => setTimeout(resolve, seconds * 1000));
@@ -78,7 +74,7 @@ async function runSingleIteration(iterationNumber, browser) {
     // 1. Navigasi awal via Playwright
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-    // 2. Lighthouse NAVIGATION mode (untuk TTFB)
+    // 2. Lighthouse NAVIGATION mode (untuk TTFB awal)
     const navResult = await lighthouse(TARGET_URL, {
       port: PORT,
       onlyCategories: ['performance'],
@@ -89,97 +85,73 @@ async function runSingleIteration(iterationNumber, browser) {
     const navLhr = navResult.lhr;
     const ttfb = navLhr.audits['server-response-time']?.numericValue || 0;
 
-    // 3. Re-navigate setelah Lighthouse Navigation (karena ia me-reload page)
+    // 3. Re-navigate untuk state bersih QuoteWizard
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('[data-testid="input-width"]', { state: 'visible' });
 
-    // 4. Isi Form dengan Playwright
-    await page.locator('[data-testid="input-width"]').fill(values.width);
-    await page.locator('[data-testid="input-height"]').fill(values.height);
+    // --- SENYAP: PLAYWRIGHT MENGISI LANGKAH 1 HINGGA 3 ---
+    
+    // Langkah 1: Pilih "New Quote"
+    await page.waitForSelector('text="New Quote"', { state: 'visible' });
+    await page.click('button:has-text("New Quote")');
 
-    // Hapus baris item ekstra agar total N murni sesuai --quantity
-    const removeBtns = page.locator('[data-testid="remove-item-btn"]');
-    const count = await removeBtns.count();
-    for (let i = 1; i < count; i++) {
-      await removeBtns.nth(1).click();
-    }
+    // Langkah 2: Isi Data Pelanggan
+    await page.waitForSelector('input#firstName', { state: 'visible' });
+    await page.fill('input#firstName', 'Test User');
+    await page.fill('input#email', 'test@example.com');
+    await page.click('button:has-text("Lanjut ke Step 3")');
 
-    await page.locator('[data-testid="input-quantity"]').first().fill(values.quantity);
+    // Langkah 3: Isi Basic Info Produk
+    await page.waitForSelector('input#productName', { state: 'visible' });
+    await page.fill('input#productName', 'Brosur Benchmark');
+    await page.fill('input#quantity', values.quantity);
+    
+    // Pilih Sides (1 Side)
+    await page.click('button[role="combobox"]:has-text("Select sides")');
+    await page.click('div[role="option"]:has-text("1 Side (Single Sided)")');
+    
+    // Isi Flat Size (biar aman dan realistis)
+    const flatWidthInputs = page.locator('input[placeholder="0.0"]');
+    await flatWidthInputs.nth(0).fill('9'); // width
+    await flatWidthInputs.nth(1).fill('5.5'); // height
 
-    // 5. Bridge Playwright → Puppeteer → Lighthouse
+    // --- PERSIAPAN TIMESPAN SEBELUM LANJUT KE LANGKAH 4 ---
     const browserURL = `http://localhost:${PORT}`;
     pBrowser = await puppeteer.connect({ browserURL });
     const pages = await pBrowser.pages();
     const pPage = pages.find(p => p.url().includes('localhost:3000')) || pages[0];
 
-    // 6. Setup SRT listener (untuk H2: Server Response Time)
-    // Pada CSR, SRT diharapkan ~0 ms karena tidak ada panggilan ke server.
-    let serverResponseTimeMs = 0;
-    const requestPromise = new Promise(resolve => {
-      const startTimes = new Map();
-      let resolved = false;
-
-      const onReq = (req) => {
-        if (req.method() === 'POST' || req.isNavigationRequest()) {
-          startTimes.set(req.url(), Date.now());
-        }
-      };
-
-      const onRes = (res) => {
-        const req = res.request();
-        if (req.method() === 'POST' || req.isNavigationRequest()) {
-          if (startTimes.has(req.url()) && !resolved) {
-            resolved = true;
-            const srt = Date.now() - startTimes.get(req.url());
-            page.removeListener('request', onReq);
-            page.removeListener('response', onRes);
-            resolve(srt);
-          }
-        }
-      };
-
-      page.on('request', onReq);
-      page.on('response', onRes);
-
-      // Fallback: CSR mungkin TIDAK melakukan POST sama sekali → resolve 0
-      setTimeout(() => { if (!resolved) { resolved = true; resolve(0); } }, 5_000);
-    });
-
-    // 7. Mulai Lighthouse TIMESPAN mode (devtools throttling)
+    // Mulai Lighthouse TIMESPAN mode (throttling devtools fisik diaktifkan)
     const timespan = await startTimespan(pPage, {
       flags: {
         port: PORT,
-        throttlingMethod: 'devtools',
         throttling: customThrottling,
+        throttlingMethod: 'devtools',
       },
     });
 
-    // 8. Eksekusi algoritma (klik tombol Run)
+    // --- KLIK NEXT: MEMICU RENDER STEP 4 DAN KOMPUTASI GREEDY BSSF ---
     const startTime = Date.now();
-    await page.click('[data-testid="generate-btn"]');
+    await page.click('button:has-text("Lanjut ke Step 4")');
 
-    // Tangkap SRT (akan resolve 0 pada CSR karena tidak ada POST)
-    serverResponseTimeMs = await requestPromise;
-
-    // 9. Tunggu visualisasi muncul (timeout 120 detik untuk N besar)
-    await page.waitForSelector('[data-testid="visualization-result"]', {
+    // Tunggu visualisasi Canvas muncul (artinya komputasi client-side selesai)
+    await page.waitForSelector('canvas', {
       state: 'attached',
       timeout: 120_000,
     });
 
     const endTime = Date.now();
-    const wallClockTotal = endTime - startTime;
+    const executionTime = endTime - startTime;
 
-    // 10. Akhiri Timespan
+    // Akhiri Timespan
     const timespanResult = await timespan.endTimespan();
     const timespanLhr = timespanResult.lhr;
 
-    // 10. Ekstrak metrik
+    // Ekstrak metrik
     const tbt = timespanLhr.audits['total-blocking-time']?.numericValue || 0;
     const cls = timespanLhr.audits['cumulative-layout-shift']?.numericValue || 0;
     const inp = timespanLhr.audits['interaction-to-next-paint']?.numericValue || 0;
 
-    console.log(`   TTFB: ${ttfb.toFixed(2)} ms | TBT: ${tbt.toFixed(2)} ms | INP: ${inp.toFixed(2)} ms | CLS: ${cls.toFixed(4)} | SRT: ${serverResponseTimeMs} ms | Wall: ${wallClockTotal} ms`);
+    console.log(`   TTFB: ${ttfb.toFixed(2)} ms | TBT: ${tbt.toFixed(2)} ms | INP: ${inp.toFixed(2)} ms | CLS: ${cls.toFixed(4)} | Exec: ${executionTime} ms`);
 
     return {
       iteration: iterationNumber,
@@ -188,8 +160,7 @@ async function runSingleIteration(iterationNumber, browser) {
         TBT_ms: parseFloat(tbt.toFixed(2)),
         INP_ms: parseFloat(inp.toFixed(2)),
         CLS: parseFloat(cls.toFixed(4)),
-        SRT_ms: serverResponseTimeMs,
-        WallClock_ms: wallClockTotal,
+        ExecutionTime_ms: executionTime,
       },
     };
   } catch (error) {
@@ -206,27 +177,18 @@ async function runSingleIteration(iterationNumber, browser) {
 }
 
 // ============================================================
-// Main: 30 Iterasi Otomatis dengan Cooldown
+// Main
 // ============================================================
 async function runBatchBenchmark() {
   console.log('╔══════════════════════════════════════════════════════════╗');
-  console.log('║  BATCH BENCHMARK — Skenario Mikro (Uji Isolasi CSR)    ║');
+  console.log('║  BATCH BENCHMARK — Skenario Makro (QuoteWizard CSR)    ║');
   console.log('╠══════════════════════════════════════════════════════════╣');
   console.log(`║  URL Target      : ${TARGET_URL}`);
-  console.log(`║  Container       : ${values.width} x ${values.height}`);
   console.log(`║  Quantity (N)    : ${values.quantity}`);
   console.log(`║  Total Iterasi   : ${ITERATIONS}`);
   console.log(`║  Cooldown/Iterasi: ${COOLDOWN_SEC} detik`);
-  console.log('╠══════════════════════════════════════════════════════════╣');
-  console.log('║  Metrik (H1): TBT & INP  → Kelumpuhan Main Thread      ║');
-  console.log('║  Metrik (H2): SRT        → Server Response Time         ║');
-  console.log('║  Metrik (H3): CLS        → Stabilitas Tata Letak Visual ║');
-  console.log('║  Baseline   : TTFB       → Dokumen awal (Lighthouse)    ║');
-  console.log('║  Tambahan   : WallClock  → Total klik → visualisasi     ║');
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
-  // Launch browser SEKALI untuk seluruh batch
-  console.log('🔄 Meluncurkan browser Chromium...\n');
   const browser = await chromium.launch({
     args: [`--remote-debugging-port=${PORT}`],
     headless: false,
@@ -248,77 +210,30 @@ async function runBatchBenchmark() {
       failCount++;
     }
 
-    // Jeda antar iterasi (kecuali iterasi terakhir)
     if (i < ITERATIONS) {
       console.log(`   ⏸  Jeda ${COOLDOWN_SEC} detik (thermal throttling control)...`);
       await sleep(COOLDOWN_SEC);
     }
   }
 
-  // ============================================================
-  // Hitung Statistik Agregat (Mean & Std Dev)
-  // ============================================================
   const validResults = allResults.filter(r => r.metrics !== null);
-  const metricKeys = ['TTFB_ms', 'TBT_ms', 'INP_ms', 'CLS', 'SRT_ms', 'WallClock_ms'];
+  const qty = parseInt(values.quantity, 10);
+  const CSV_HEADER = 'No,n,TTFB_ms,TBT_ms,INP_ms,CLS,ExecutionTime_ms';
+  const csvRows = [CSV_HEADER];
 
-  const stats = {};
-  for (const key of metricKeys) {
-    const values = validResults.map(r => r.metrics[key]);
-    const mean = values.reduce((a, b) => a + b, 0) / values.length;
-    const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
-    const stdDev = Math.sqrt(variance);
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-
-    stats[key] = {
-      mean: parseFloat(mean.toFixed(2)),
-      stdDev: parseFloat(stdDev.toFixed(2)),
-      min: parseFloat(min.toFixed(2)),
-      max: parseFloat(max.toFixed(2)),
-    };
+  for (const r of validResults) {
+    csvRows.push([r.iteration, qty, r.metrics.TTFB_ms, r.metrics.TBT_ms, r.metrics.INP_ms, r.metrics.CLS, r.metrics.ExecutionTime_ms].join(','));
   }
 
-  // ============================================================
-  // Tampilkan Ringkasan di Terminal
-  // ============================================================
+  fs.writeFileSync(OUTPUT_FILE, csvRows.join('\n'));
+
   console.log('\n\n╔══════════════════════════════════════════════════════════╗');
   console.log('║              📊 RINGKASAN BATCH BENCHMARK               ║');
   console.log('╠══════════════════════════════════════════════════════════╣');
   console.log(`║  Berhasil: ${successCount}/${ITERATIONS}  |  Gagal: ${failCount}/${ITERATIONS}`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
+  console.log(`💾 Seluruh hasil batch disimpan di: ${OUTPUT_FILE}`);
 
-  console.log('📈 Statistik Agregat (Mean ± Std Dev):');
-  console.table(
-    metricKeys.map(key => ({
-      Metric: key,
-      Mean: `${stats[key].mean}`,
-      StdDev: `± ${stats[key].stdDev}`,
-      Min: `${stats[key].min}`,
-      Max: `${stats[key].max}`,
-    }))
-  );
-
-  // ============================================================
-  // Simpan Data ke JSON (Format Flat — Excel-Ready)
-  // ============================================================
-  const qty = parseInt(values.quantity, 10);
-
-  const excelRows = validResults.map(r => ({
-    'No':           r.iteration,
-    [`n=${qty}`]:    qty,
-    'TTFB_ms':      r.metrics.TTFB_ms,
-    'TBT_ms':       r.metrics.TBT_ms,
-    'INP_ms':       r.metrics.INP_ms,
-    'CLS':          r.metrics.CLS,
-    'SRT_ms':       r.metrics.SRT_ms,
-    'WallClock_ms': r.metrics.WallClock_ms,
-  }));
-
-
-  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(excelRows, null, 2));
-  console.log(`\n💾 Seluruh hasil batch disimpan di: ${OUTPUT_FILE}`);
-
-  // Cleanup
   await browser.close();
   console.log('✅ Batch benchmark selesai!\n');
 }

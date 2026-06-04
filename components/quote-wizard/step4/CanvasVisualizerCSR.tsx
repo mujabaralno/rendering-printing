@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuoteStore } from "@/store/useQuoteStore";
-import { runBinPackingAction } from "@/actions/binPackingAction";
-import { PackingResult } from "@/utils/guillotineAlgorithm";
+import {
+  guillotineBinPack,
+  type PackingResult,
+} from "@/utils/guillotineAlgorithm";
 
-export default function CanvasVisualizer() {
+export default function CanvasVisualizerCSR() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const productName =
@@ -38,33 +40,32 @@ export default function CanvasVisualizer() {
 
   const [packResult, setPackResult] = useState<PackingResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
-  const [isPending, startTransition] = useTransition();
   const [activeMode, setActiveMode] = useState<"print" | "cutting" | "gripper">(
     "print",
   );
 
+  // CSR: Algoritma dieksekusi langsung di browser (client-side)
   useEffect(() => {
     let active = true;
-    const fetchPack = async () => {
+    const runPack = () => {
       if (printableW > 0 && printableH > 0 && itemW > 0 && itemH > 0) {
         setIsCalculating(true);
-        startTransition(async () => {
-          try {
-            const result = await runBinPackingAction(printableW, printableH, [
-              { width: itemW, height: itemH, quantity: requestedQuantity },
-            ]);
-            if (active) setPackResult(result);
-          } catch (error) {
-            console.error("Failed to calculate bin packing:", error);
-          } finally {
-            if (active) setIsCalculating(false);
-          }
-        });
+        try {
+          // Eksekusi sinkron di main thread browser (CSR)
+          const result = guillotineBinPack(printableW, printableH, [
+            { width: itemW, height: itemH, quantity: requestedQuantity },
+          ]);
+          if (active) setPackResult(result);
+        } catch (error) {
+          console.error("Failed to calculate bin packing:", error);
+        } finally {
+          if (active) setIsCalculating(false);
+        }
       }
     };
 
     const timer = setTimeout(() => {
-      fetchPack();
+      runPack();
     }, 300);
 
     return () => {
@@ -464,7 +465,7 @@ export default function CanvasVisualizer() {
               ></path>
             </svg>
             <span className="text-muted-foreground font-medium">
-              Running 2D Guillotine Pack...
+              Running 2D Guillotine Pack (Client-Side)...
             </span>
           </div>
         ) : (
@@ -536,7 +537,7 @@ export default function CanvasVisualizer() {
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
-            Server Intelligence
+            Client Intelligence
           </h4>
           <div className="space-y-3">
             <div className="flex justify-between items-center text-sm border-b border-border/50 pb-2">
@@ -547,7 +548,7 @@ export default function CanvasVisualizer() {
               <span className="text-muted-foreground">Execution Env</span>
               <span className="text-primary font-bold text-xs bg-primary/10 px-2 py-0.5 rounded flex items-center gap-1">
                 <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></div>
-                Node.js Server
+                Browser (Client)
               </span>
             </div>
           </div>

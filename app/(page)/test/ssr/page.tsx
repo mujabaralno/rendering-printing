@@ -1,11 +1,11 @@
 "use client";
 
-import { useSSRExactBinPacking } from "@/hooks/useSSRExactBinPacking";
+import { useSSRBinPacking } from "@/hooks/useSSRBinPacking";
 import { ControlPanel } from "@/components/ControlPanel";
 import { LayoutVisualizer } from "@/components/LayoutVisualizer";
 
 // ============================================================
-// Styles
+// Styles — Minimal inline styles, no CSS animations
 // ============================================================
 
 const styles = {
@@ -21,7 +21,7 @@ const styles = {
   title: {
     fontSize: "16px",
     fontWeight: 700,
-    color: "var(--primary)", // Menggunakan warna primer untuk membedakan dari CSR yang destruktif
+    color: "var(--foreground)",
     margin: 0,
   },
   subtitle: {
@@ -58,27 +58,14 @@ const styles = {
     color: "var(--primary)",
     marginBottom: "16px",
   },
-  serverNotice: {
-    fontSize: "11px",
-    color: "var(--primary)",
-    border: "1px solid var(--primary)",
-    padding: "8px",
-    borderRadius: "4px",
-    marginBottom: "16px",
-    backgroundColor: "rgba(59, 130, 246, 0.1)", // blue tint
-  },
-  error: {
+  errorMsg: {
     fontSize: "13px",
     color: "var(--destructive)",
     marginBottom: "16px",
-  },
-  footer: {
-    marginTop: "64px",
-    paddingTop: "24px",
-    borderTop: "1px solid var(--border)",
-    fontSize: "12px",
-    color: "var(--muted-foreground)",
-    textAlign: "center" as const,
+    padding: "12px",
+    backgroundColor: "color-mix(in srgb, var(--destructive) 10%, transparent)",
+    border: "1px solid color-mix(in srgb, var(--destructive) 30%, transparent)",
+    borderRadius: "var(--radius)",
   },
 } as const;
 
@@ -87,24 +74,22 @@ const styles = {
 // ============================================================
 
 /**
- * Halaman EXACT 2D Guillotine Bin Packing — Server-Side (SSR)
+ * Halaman Stress Test SSR — 2D Guillotine Bin Packing
  *
- * Menggunakan algoritma MURNI (Brute-Force/Recursive Backtracking) NP-Hard.
- * Komputasi ini DIDELEGASIKAN ke server (Node.js backend).
- *
- * Meskipun algoritmanya memakan waktu sangat lama (eksponensial),
- * karena dieksekusi di server, Main Thread peramban (client) TETAP BEBAS
- * dan tidak akan memunculkan "Page Unresponsive". Ini adalah inti perbandingan
- * untuk skripsi yang membuktikan keunggulan SSR dalam menangani beban berat.
+ * Entry point terisolasi untuk pengujian performa Server-Side Rendering
+ * via Next.js Server Actions.
+ * - Komputasi didelegasikan ke backend Node.js.
+ * - Komponen UI (ControlPanel, LayoutVisualizer) didaur ulang dari CSR.
+ * - Menggunakan React 19 useTransition untuk state "pending".
  */
-export default function ExactBinPackingSSRPage() {
+export default function SSRStressTestPage() {
   const {
     containerWidth,
     containerHeight,
     items,
     result,
     executionTime,
-    isComputing,
+    isComputing, // Ini sekarang dikontrol oleh useTransition() (isPending)
     error,
     updateContainerWidth,
     updateContainerHeight,
@@ -112,22 +97,19 @@ export default function ExactBinPackingSSRPage() {
     removeItem,
     updateItem,
     runPacking,
-  } = useSSRExactBinPacking();
+  } = useSSRBinPacking();
 
   return (
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
         <h1 style={styles.title}>
-          EXACT 2D Guillotine Bin Packing (NP-Hard) — SSR
+          SSR Stress Test — 2D Guillotine Bin Packing
         </h1>
         <p style={styles.subtitle}>
-          Recursive Backtracking · Asynchronous Server Action · Unblocked Main Thread
+          Server Action computation · Node.js thread blocking · SRT
+          instrumentation
         </p>
-      </div>
-
-      <div style={styles.serverNotice}>
-        ℹ INFORMASI: Komputasi NP-Hard ini dieksekusi di Server (Node.js). Meskipun durasi komputasinya memakan waktu eksponensial (karena mencoba jutaan permutasi), tab peramban Anda <b>TIDAK AKAN CRASH</b> karena Main Thread tetap bebas (TBT = 0).
       </div>
 
       {/* Two-column layout */}
@@ -144,34 +126,34 @@ export default function ExactBinPackingSSRPage() {
             onRemoveItem={removeItem}
             onUpdateItem={updateItem}
             onRun={runPacking}
-            isComputing={isComputing}
+            isComputing={isComputing} // UI akan disable saat Server Action berjalan
           />
         </div>
 
         {/* Right: Results */}
         <div style={styles.resultColumn}>
           {/* Error Message */}
-          {error && <div style={styles.error}>❌ {error}</div>}
+          {error && <div style={styles.errorMsg}>{error}</div>}
 
-          {/* Computing indicator */}
+          {/* Pending / Computing indicator */}
           {isComputing && (
             <div style={styles.computing}>
-              ⏳ Mengirim payload ke Server... Menunggu Server Node.js menghitung permutasi eksponensial NP-Hard... (Browser tetap responsif!)
+              📡 Menunggu respons dari server (Server Action executing)...
             </div>
           )}
 
-          {/* Execution time */}
+          {/* Execution time & Metrics */}
           {executionTime !== null && result && (
             <div style={styles.metrics}>
               <span>
-                ⏱ Server Execution Time + Network Roundtrip:{" "}
+                ⏱ Server Roundtrip Time:{" "}
                 <span style={styles.metricValue}>{executionTime}ms</span>
               </span>
             </div>
           )}
 
-          {/* Visualization */}
-          {result && !isComputing && (
+          {/* Visualization — Menggunakan ulang komponen Dumb Component CSR */}
+          {result && (
             <LayoutVisualizer
               placements={result.placements}
               containerWidth={result.containerWidth}
@@ -182,11 +164,6 @@ export default function ExactBinPackingSSRPage() {
             />
           )}
         </div>
-      </div>
-
-      {/* Footer untuk memicu CLS saat Canvas dari server dirender */}
-      <div style={styles.footer}>
-        End of Document. Natural CLS baseline for Exact SSR Algorithm.
       </div>
     </div>
   );

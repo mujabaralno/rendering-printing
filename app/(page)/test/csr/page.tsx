@@ -1,11 +1,11 @@
 "use client";
 
-import { useExactBinPacking } from "@/hooks/useExactBinPacking";
+import { useBinPacking } from "@/hooks/useBinPacking";
 import { ControlPanel } from "@/components/ControlPanel";
 import { LayoutVisualizer } from "@/components/LayoutVisualizer";
 
 // ============================================================
-// Styles — Minimal inline styles
+// Styles — Minimal inline styles, no CSS animations
 // ============================================================
 
 const styles = {
@@ -21,7 +21,7 @@ const styles = {
   title: {
     fontSize: "16px",
     fontWeight: 700,
-    color: "var(--primary)", // Warna peringatan karena algoritma ini berat
+    color: "var(--foreground)",
     margin: 0,
   },
   subtitle: {
@@ -58,15 +58,6 @@ const styles = {
     color: "var(--primary)",
     marginBottom: "16px",
   },
-  warning: {
-    fontSize: "11px",
-    color: "var(--destructive)",
-    border: "1px solid var(--destructive)",
-    padding: "8px",
-    borderRadius: "4px",
-    marginBottom: "16px",
-    backgroundColor: "rgba(239, 68, 68, 0.1)",
-  },
   footer: {
     marginTop: "64px",
     paddingTop: "24px",
@@ -82,13 +73,14 @@ const styles = {
 // ============================================================
 
 /**
- * Halaman EXACT 2D Guillotine Bin Packing
+ * Halaman Stress Test CSR — 2D Guillotine Bin Packing
  *
- * Menggunakan algoritma MURNI (Brute-Force/Recursive Backtracking)
- * tanpa heuristic dan tanpa delay simulasi artifisial.
- * Sifat NP-Hard asli akan terasa jika nilai N dinaikkan > 15.
+ * Entry point terisolasi untuk pengujian performa Client-Side Rendering.
+ * - Semua komputasi berjalan sinkron di main thread (tanpa Web Workers).
+ * - Tidak ada animasi CSS berat → menjaga CLS tetap rendah.
+ * - Minimal DOM untuk pengukuran TBT yang akurat.
  */
-export default function ExactBinPackingPage() {
+export default function CSRStressTestPage() {
   const {
     containerWidth,
     containerHeight,
@@ -102,15 +94,17 @@ export default function ExactBinPackingPage() {
     removeItem,
     updateItem,
     runPacking,
-  } = useExactBinPacking();
+  } = useBinPacking();
 
   return (
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>2D Guillotine Bin Packing (NP-Hard)</h1>
+        <h1 style={styles.title}>
+          CSR Stress Test — 2D Guillotine Bin Packing
+        </h1>
         <p style={styles.subtitle}>
-          Recursive Backtracking · O(2^n * poly(n)) · Pure Main Thread Blocking
+          Synchronous computation · Main thread blocking · TBT instrumentation
         </p>
       </div>
 
@@ -137,8 +131,7 @@ export default function ExactBinPackingPage() {
           {/* Computing indicator */}
           {isComputing && (
             <div style={styles.computing}>
-              ⚠ Main thread sedang diblokir oleh komputasi eksponensial
-              NP-Hard...
+              ⚠ Main thread sedang diblokir oleh komputasi sinkron...
             </div>
           )}
 
@@ -152,7 +145,7 @@ export default function ExactBinPackingPage() {
             </div>
           )}
 
-          {/* Visualization */}
+          {/* Visualization — Element is rendered dynamically to test natural CLS */}
           {result && (
             <LayoutVisualizer
               placements={result.placements}
@@ -166,9 +159,13 @@ export default function ExactBinPackingPage() {
         </div>
       </div>
 
-      {/* Footer untuk memicu CLS saat Canvas dirender */}
+      {/* 
+        Elemen di bawah ini sengaja ditambahkan agar kemunculan Canvas secara 
+        tiba-tiba mendorong elemen ini ke bawah, sehingga menciptakan 
+        "Natural CLS" (pergeseran tata letak) yang murni untuk diukur Lighthouse.
+      */}
       <div style={styles.footer}>
-        End of Document. Natural CLS baseline for Exact Algorithm.
+        End of Document. Rendering blocking test baseline.
       </div>
     </div>
   );

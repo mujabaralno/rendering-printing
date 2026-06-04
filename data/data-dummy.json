@@ -1100,7 +1100,7 @@
             {
               "id": "M-007",
               "material": "Matte Paper 200gsm",
-              "gsm": 120,
+              "gsm": 200,
               "supplier": "Paper Source LLC",
               "unit": "per_sheet",
               "cost": 0.28

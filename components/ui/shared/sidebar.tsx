@@ -23,8 +23,20 @@ import {
 const adminNavItems = [
   {
     title: "Create Quote",
-    url: "/",
+    url: "/create-quote",
     icon: Plus,
+    items: [
+      {
+        title: "Client-Side (CSR)",
+        url: "/create-quote/csr",
+        icon: EarthIcon,
+      },
+      {
+        title: "Server-Side (SSR)",
+        url: "/create-quote/ssr",
+        icon: Server,
+      },
+    ],
   },
   {
     title: "Test",
@@ -54,7 +66,9 @@ export function AdminSidebar() {
         <SidebarGroup>
           {/* Label khusus untuk Admin Panel */}
           <SidebarGroupLabel className="mb-4 px-2 text-xs font-bold uppercase tracking-[0.2em] text-primary">
-            <Printer className="mr-2" /> Smart Printing
+            <Link href={`/`} className="flex gap-2">
+              <Printer className="mr-2" /> Smart Printing
+            </Link>
           </SidebarGroupLabel>
 
           <SidebarGroupContent>
