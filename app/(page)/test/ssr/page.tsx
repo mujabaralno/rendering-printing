@@ -103,9 +103,7 @@ export default function SSRStressTestPage() {
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>
-          SSR Stress Test — 2D Guillotine Bin Packing
-        </h1>
+        <h1 style={styles.title}>SSR Stress Test — 2D Guillotine Bin BSSF</h1>
         <p style={styles.subtitle}>
           Server Action computation · Node.js thread blocking · SRT
           instrumentation

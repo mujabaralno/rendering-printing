@@ -224,7 +224,6 @@ function splitFreeRect(
  */
 function mergeFreeRects(freeRects: FreeRectangle[]): FreeRectangle[] {
   const merged = [...freeRects];
-
   for (let i = 0; i < merged.length; i++) {
     for (let j = i + 1; j < merged.length; j++) {
       const a = merged[i];

@@ -100,9 +100,7 @@ export default function CSRStressTestPage() {
     <div style={styles.page}>
       {/* Header */}
       <div style={styles.header}>
-        <h1 style={styles.title}>
-          CSR Stress Test — 2D Guillotine Bin Packing
-        </h1>
+        <h1 style={styles.title}>CSR Stress Test — 2D Guillotine BSSF</h1>
         <p style={styles.subtitle}>
           Synchronous computation · Main thread blocking · TBT instrumentation
         </p>

@@ -9,8 +9,6 @@ import path from 'node:path';
 // CLI Arguments
 // ============================================================
 const options = {
-  width:      { type: 'string', default: '650' },
-  height:     { type: 'string', default: '1000' },
   quantity:   { type: 'string', default: '50' },
   iterations: { type: 'string', default: '30' },
   cooldown:   { type: 'string', default: '10' },
@@ -20,8 +18,10 @@ const { values } = parseArgs({ args: process.argv.slice(2), options });
 // ============================================================
 // Target: Vercel Production (SSR)
 // Eksekusi beban kalkulasi BSSF didelegasikan ke infrastruktur awan Vercel.
+// Aktivitas difokuskan pada ekstraksi data lonjakan waktu respons jaringan
+// dan pemrosesan peladen melalui metrik Server Response Time (SRT).
 // ============================================================
-const TARGET_URL   = 'https://rendering-printing.vercel.app/test/ssr';
+const TARGET_URL   = 'https://rendering-printing.vercel.app/create-quote/ssr';
 const PORT         = 9222;
 const ITERATIONS   = parseInt(values.iterations, 10);
 const COOLDOWN_SEC = parseInt(values.cooldown, 10);
@@ -52,7 +52,7 @@ if (!fs.existsSync(RESULT_DIR)) {
 const existingFiles = fs.readdirSync(RESULT_DIR);
 let maxNum = 0;
 existingFiles.forEach(file => {
-  const match = file.match(/^pengujian-ssr-(\d+)\.json$/);
+  const match = file.match(/^pengujian-macro-ssr-(\d+)\.json$/);
   if (match) {
     const num = parseInt(match[1], 10);
     if (num > maxNum) maxNum = num;
@@ -60,7 +60,7 @@ existingFiles.forEach(file => {
 });
 const nextNum = maxNum + 1;
 const qty = parseInt(values.quantity, 10);
-const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-ssr-${nextNum}-${qty}.json`);
+const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-macro-ssr-${nextNum}-${qty}.json`);
 
 // ============================================================
 // Helper: Sleep / Jeda antar iterasi (Thermal Throttling Control)
@@ -78,60 +78,79 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
   let pBrowser = null;
 
   try {
-    // ── Step 1: Navigasi awal ──
+    // ── Step 1: Navigasi awal ke Vercel ──
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-    // ── Step 2: Lighthouse NAVIGATION mode (TTFB baseline dokumen awal) ──
-    // TTFB diukur terpisah sebagai waktu respons awal server Vercel
-    // sebelum ada interaksi pengguna (baseline murni).
+    // ── Step 2: Lighthouse NAVIGATION mode (TTFB baseline) ──
     pBrowser = await puppeteer.connect({ browserURL: `http://localhost:${PORT}` });
 
     const navResult = await lighthouse(TARGET_URL, {
       port: PORT,
       onlyCategories: ['performance'],
       output: 'json',
-      throttling: customThrottling,
       throttlingMethod: 'devtools',
+      throttling: customThrottling,
     });
     const navLhr = navResult.lhr;
     const ttfb = navLhr.audits['server-response-time']?.numericValue || 0;
 
-    // ── Step 3: Re-navigate & isi form ──
+    // ── Step 3: Re-navigate untuk state bersih QuoteWizard ──
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('[data-testid="input-width"]', { state: 'visible' });
 
-    await page.locator('[data-testid="input-width"]').fill(values.width);
-    await page.locator('[data-testid="input-height"]').fill(values.height);
+    // ═══════════════════════════════════════════════════════════
+    // SENYAP: PLAYWRIGHT MENGISI LANGKAH 1 → 3 (tanpa Lighthouse)
+    // ═══════════════════════════════════════════════════════════
 
-    // Hapus baris item ekstra agar total N murni sesuai --quantity
-    const removeBtns = page.locator('[data-testid="remove-item-btn"]');
-    const count = await removeBtns.count();
-    for (let i = 1; i < count; i++) {
-      await removeBtns.nth(1).click();
-    }
+    // Langkah 1: Pilih "New Quote"
+    await page.waitForSelector('text="New Quote"', { state: 'visible' });
+    await page.click('button:has-text("New Quote")');
 
-    await page.locator('[data-testid="input-quantity"]').first().fill(values.quantity);
+    // Langkah 2: Isi Data Pelanggan
+    await page.waitForSelector('input#firstName', { state: 'visible' });
+    await page.fill('input#firstName', 'Test User');
+    await page.fill('input#email', 'test@example.com');
+    await page.click('button:has-text("Lanjut ke Step 3")');
 
-    // ── Step 4: Bridge Playwright → Puppeteer → Lighthouse Timespan ──
+    // Langkah 3: Isi Basic Info Produk
+    await page.waitForSelector('input#productName', { state: 'visible' });
+    await page.fill('input#productName', 'Brosur Benchmark');
+    await page.fill('input#quantity', values.quantity);
+    
+    // Pilih Sides (1 Side)
+    await page.click('button[role="combobox"]:has-text("Select sides")');
+    await page.click('div[role="option"]:has-text("1 Side (Single Sided)")');
+    
+    // Isi Flat Size
+    const flatWidthInputs = page.locator('input[placeholder="0.0"]');
+    await flatWidthInputs.nth(0).fill('9');   // width
+    await flatWidthInputs.nth(1).fill('5.5'); // height
+
+    // ═══════════════════════════════════════════════════════════
+    // PERSIAPAN: Bridge Playwright → Puppeteer → Lighthouse Timespan
+    // ═══════════════════════════════════════════════════════════
     const pages = await pBrowser.pages();
-    const pPage = pages.find(p => p.url().includes('rendering-printing')) || pages[0];
+    const pPage = pages.find(p => p.url().includes('vercel.app')) || pages[0];
 
-    // ── Step 5: Setup SRT listener + Lighthouse Timespan ──
-    // SRT = waktu antara klik tombol → respons POST Server Action diterima browser.
+    // Setup SRT listener (untuk H2: Server Response Time)
+    // Pada SSR, SRT diharapkan TINGGI karena komputasi didelegasikan ke Vercel
+    // melalui Server Action (POST request ke /_rsc atau endpoint server action).
     let serverResponseTimeMs = 0;
     const requestPromise = new Promise(resolve => {
       const startTimes = new Map();
+      let resolved = false;
 
       const onReq = (req) => {
-        if (req.method() === 'POST' || req.isNavigationRequest()) {
+        // Server Actions di Next.js menggunakan POST request
+        if (req.method() === 'POST') {
           startTimes.set(req.url(), Date.now());
         }
       };
 
       const onRes = (res) => {
         const req = res.request();
-        if (req.method() === 'POST' || req.isNavigationRequest()) {
-          if (startTimes.has(req.url())) {
+        if (req.method() === 'POST') {
+          if (startTimes.has(req.url()) && !resolved) {
+            resolved = true;
             const srt = Date.now() - startTimes.get(req.url());
             page.removeListener('request', onReq);
             page.removeListener('response', onRes);
@@ -143,11 +162,24 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
       page.on('request', onReq);
       page.on('response', onRes);
 
-      // Fallback timeout 120 detik
-      setTimeout(() => resolve(0), 120_000);
+      // Timeout safety: jika tidak ada POST dalam 120 detik
+      setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          page.removeListener('request', onReq);
+          page.removeListener('response', onRes);
+          resolve(0);
+        }
+      }, 120_000);
     });
 
-    // Mulai Lighthouse TIMESPAN (devtools throttling)
+    // ═══════════════════════════════════════════════════════════
+    // MULAI LIGHTHOUSE TIMESPAN
+    // Tepat sebelum tombol "Next" menuju Step 4 ditekan.
+    // throttlingMethod: 'devtools' → perlambatan fisik via CDP.
+    // SSR: Komputasi didelegasikan ke Vercel → TBT/INP rendah,
+    //      SRT tinggi (waktu server memproses algoritma BSSF).
+    // ═══════════════════════════════════════════════════════════
     const timespan = await startTimespan(pPage, {
       flags: {
         port: PORT,
@@ -156,23 +188,55 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
       },
     });
 
-    // ── Step 6: Klik tombol eksekusi & tunggu hasil ──
+    // ═══════════════════════════════════════════════════════════
+    // KLIK NEXT → MEMICU RENDER STEP 4 + SERVER ACTION (BSSF)
+    // Komponen CanvasVisualizer (SSR) memanggil runBinPackingAction()
+    // → Server Action → komputasi BSSF dijalankan di Vercel.
+    // ═══════════════════════════════════════════════════════════
     const startTime = Date.now();
-    await page.click('[data-testid="generate-btn"]');
+    await page.click('button:has-text("Lanjut ke Step 4")');
 
-    // Tangkap SRT dari respons Server Action
+    // Tangkap SRT (pada SSR, POST request ke Vercel server action)
     serverResponseTimeMs = await requestPromise;
 
-    // Tunggu visualisasi muncul di browser
-    await page.waitForSelector('[data-testid="visualization-result"]', {
-      state: 'attached',
+    // ═══════════════════════════════════════════════════════════
+    // TUNGGU KOMPUTASI SERVER SELESAI
+    // Komponen CanvasVisualizer menggunakan runBinPackingAction()
+    // (Server Action) dalam useEffect dengan setTimeout(300ms).
+    // Setelah server selesai, isCalculating → false, dan canvas di-render.
+    // Kita tunggu sampai:
+    // 1. Step 4 muncul (ada heading "Operational Details")
+    // 2. Teks "Running 2D Guillotine Pack" HILANG (server selesai)
+    // 3. Statistik "Items per Sheet" muncul (canvas sudah di-render)
+    // ═══════════════════════════════════════════════════════════
+    await page.waitForSelector('h2:has-text("Operational Details")', {
+      state: 'visible',
       timeout: 120_000,
     });
+
+    // Tunggu indikator loading hilang (server action selesai)
+    await page.waitForSelector('text="Running 2D Guillotine Pack"', {
+      state: 'hidden',
+      timeout: 120_000,
+    }).catch(() => {
+      // Loading mungkin terlalu cepat / sudah hilang sebelum kita cek
+    });
+
+    // Tunggu statistik muncul (bukti canvas sudah di-render setelah komputasi)
+    await page.waitForSelector('text="Items per Sheet"', {
+      state: 'visible',
+      timeout: 120_000,
+    });
+
+    // Tambahan: tunggu 500ms ekstra untuk memastikan canvas painting selesai
+    await page.waitForTimeout(500);
 
     const endTime = Date.now();
     const wallClockTotal = endTime - startTime;
 
-    // ── Step 7: Akhiri Timespan & Ekstrak metrik ──
+    // ═══════════════════════════════════════════════════════════
+    // AKHIRI TIMESPAN & EKSTRAK METRIK
+    // ═══════════════════════════════════════════════════════════
     const timespanResult = await timespan.endTimespan();
     const timespanLhr = timespanResult.lhr;
 
@@ -215,10 +279,9 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
 // ============================================================
 async function runBatchBenchmark() {
   console.log('╔══════════════════════════════════════════════════════════════════╗');
-  console.log('║  BATCH BENCHMARK — SSR (Delegasi ke Vercel)                    ║');
+  console.log('║  BATCH BENCHMARK — Skenario Makro (QuoteWizard SSR → Vercel)   ║');
   console.log('╠══════════════════════════════════════════════════════════════════╣');
   console.log(`║  Target          : ${TARGET_URL}`);
-  console.log(`║  Container       : ${values.width} x ${values.height}`);
   console.log(`║  Quantity (N)    : ${values.quantity}`);
   console.log(`║  Total Iterasi   : ${ITERATIONS}`);
   console.log(`║  Cooldown/Iterasi: ${COOLDOWN_SEC} detik`);
@@ -265,7 +328,6 @@ async function runBatchBenchmark() {
       failCount++;
     }
 
-    // Jeda antar iterasi (kecuali iterasi terakhir)
     if (i < ITERATIONS) {
       console.log(`   ⏸  Jeda ${COOLDOWN_SEC} detik (thermal throttling control)...`);
       await sleep(COOLDOWN_SEC);
@@ -298,11 +360,11 @@ async function runBatchBenchmark() {
   // ============================================================
   // Tampilkan Ringkasan di Terminal
   // ============================================================
-  console.log('\n\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║              📊 RINGKASAN BATCH BENCHMARK (SSR)         ║');
-  console.log('╠══════════════════════════════════════════════════════════╣');
+  console.log('\n\n╔══════════════════════════════════════════════════════════════════╗');
+  console.log('║              📊 RINGKASAN BATCH BENCHMARK (Makro SSR)          ║');
+  console.log('╠══════════════════════════════════════════════════════════════════╣');
   console.log(`║  Berhasil: ${successCount}/${ITERATIONS}  |  Gagal: ${failCount}/${ITERATIONS}`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  console.log('╚══════════════════════════════════════════════════════════════════╝\n');
 
   console.log('📈 Statistik Agregat (Mean ± Std Dev):');
   console.table(
@@ -329,13 +391,12 @@ async function runBatchBenchmark() {
     'WallClock_ms': r.metrics.WallClock_ms,
   }));
 
-
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(excelRows, null, 2));
   console.log(`\n💾 Seluruh hasil batch disimpan di: ${OUTPUT_FILE}`);
 
   // Cleanup
   await browser.close();
-  console.log('✅ Batch benchmark SSR selesai!\n');
+  console.log('✅ Batch benchmark Makro SSR selesai!\n');
 }
 
 runBatchBenchmark().catch(console.error);

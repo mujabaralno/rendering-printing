@@ -7,12 +7,6 @@ import {
 } from "@/utils/guillotineAlgorithm";
 
 /**
- * Server Action untuk mengeksekusi algoritma 2D Guillotine Bin Packing
- * di sisi server (Node.js/Vercel).
- *
- * Menerima parameter dari klien, memanggil fungsi murni yang sama
- * yang digunakan di CSR, namun mengeksekusinya di luar main thread peramban.
- *
  * @param containerWidth Lebar container (mm)
  * @param containerHeight Tinggi container (mm)
  * @param items Array dari item yang akan dikemas

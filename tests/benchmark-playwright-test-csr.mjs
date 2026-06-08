@@ -69,7 +69,7 @@ function sleep(seconds) {
 // ============================================================
 // Single Iteration Runner
 // ============================================================
-async function runSingleIteration(iterationNumber, browser) {
+async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
   const context = await browser.newContext();
   const page = await context.newPage();
   let pBrowser = null;
@@ -179,7 +179,11 @@ async function runSingleIteration(iterationNumber, browser) {
     const cls = timespanLhr.audits['cumulative-layout-shift']?.numericValue || 0;
     const inp = timespanLhr.audits['interaction-to-next-paint']?.numericValue || 0;
 
-    console.log(`   TTFB: ${ttfb.toFixed(2)} ms | TBT: ${tbt.toFixed(2)} ms | INP: ${inp.toFixed(2)} ms | CLS: ${cls.toFixed(4)} | SRT: ${serverResponseTimeMs} ms | Wall: ${wallClockTotal} ms`);
+    if (!isWarmup) {
+      console.log(`   TTFB: ${ttfb.toFixed(2)} ms | TBT: ${tbt.toFixed(2)} ms | INP: ${inp.toFixed(2)} ms | CLS: ${cls.toFixed(4)} | SRT: ${serverResponseTimeMs} ms | Wall: ${wallClockTotal} ms`);
+    } else {
+      console.log(`   [Warm-up] Selesai (Wall: ${wallClockTotal} ms)`);
+    }
 
     return {
       iteration: iterationNumber,
@@ -235,6 +239,19 @@ async function runBatchBenchmark() {
   const allResults = [];
   let successCount = 0;
   let failCount = 0;
+
+  // ============================================================
+  // WARM-UP PHASE
+  // ============================================================
+  console.log('\n🔥 Memulai Fase Pemanasan (Warm-up)...');
+  console.log('   Tujuan: Untuk menetralisir bias dari proses kompilasi Just-In-Time (JIT)');
+  console.log('   pada V8 Engine, sistem melakukan 3 kali iterasi pemanasan (warm-up) yang tidak direkam.');
+  for (let i = 1; i <= 3; i++) {
+    console.log(`\n🔥 Warm-up ${i}/3`);
+    await runSingleIteration(`W-${i}`, browser, true);
+    await sleep(2); // jeda singkat antar warm-up
+  }
+  console.log('\n✅ Pemanasan selesai. Memulai iterasi utama...\n');
 
   for (let i = 1; i <= ITERATIONS; i++) {
     console.log(`\n🔁 Iterasi ${i}/${ITERATIONS}`);

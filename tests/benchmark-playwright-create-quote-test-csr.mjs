@@ -9,22 +9,22 @@ import path from 'node:path';
 // CLI Arguments
 // ============================================================
 const options = {
-  width:      { type: 'string', default: '1000' },
-  height:     { type: 'string', default: '1000' },
   quantity:   { type: 'string', default: '50' },
-  url:        { type: 'string', default: '/create-quote/csr' },
   iterations: { type: 'string', default: '30' },
   cooldown:   { type: 'string', default: '10' },
 };
 const { values } = parseArgs({ args: process.argv.slice(2), options });
 
-const TARGET_URL   = `http://localhost:3000${values.url}`;
+const TARGET_URL   = 'http://localhost:3000/create-quote/csr';
 const PORT         = 9222;
 const ITERATIONS   = parseInt(values.iterations, 10);
 const COOLDOWN_SEC = parseInt(values.cooldown, 10);
 
 // ============================================================
-// Lighthouse Throttling (Skenario Makro - DevTools Throttling)
+// Lighthouse Throttling (devtools mode)
+// Navigation: Untuk TTFB baseline
+// Timespan:   Untuk TBT, INP, CLS (membuktikan H1 & H3 bahwa CSR
+//             memblokir main thread → TBT/INP tinggi)
 // ============================================================
 const customThrottling = {
   rttMs: 150,
@@ -46,14 +46,15 @@ if (!fs.existsSync(RESULT_DIR)) {
 const existingFiles = fs.readdirSync(RESULT_DIR);
 let maxNum = 0;
 existingFiles.forEach(file => {
-  const match = file.match(/^pengujian-macro-csr-(\d+)\.csv$/);
+  const match = file.match(/^pengujian-macro-csr-(\d+)\.json$/);
   if (match) {
     const num = parseInt(match[1], 10);
     if (num > maxNum) maxNum = num;
   }
 });
 const nextNum = maxNum + 1;
-const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-macro-csr-${nextNum}-${values.quantity}.csv`);
+const qty = parseInt(values.quantity, 10);
+const OUTPUT_FILE = path.join(RESULT_DIR, `pengujian-macro-csr-${nextNum}-${qty}.json`);
 
 // ============================================================
 // Helper: Sleep
@@ -65,16 +66,18 @@ function sleep(seconds) {
 // ============================================================
 // Single Iteration Runner
 // ============================================================
-async function runSingleIteration(iterationNumber, browser) {
+async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
   const context = await browser.newContext();
   const page = await context.newPage();
   let pBrowser = null;
 
   try {
-    // 1. Navigasi awal via Playwright
+    // ── Step 1: Navigasi awal ──
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-    // 2. Lighthouse NAVIGATION mode (untuk TTFB awal)
+    // ── Step 2: Lighthouse NAVIGATION mode (TTFB baseline) ──
+    pBrowser = await puppeteer.connect({ browserURL: `http://localhost:${PORT}` });
+
     const navResult = await lighthouse(TARGET_URL, {
       port: PORT,
       onlyCategories: ['performance'],
@@ -85,11 +88,13 @@ async function runSingleIteration(iterationNumber, browser) {
     const navLhr = navResult.lhr;
     const ttfb = navLhr.audits['server-response-time']?.numericValue || 0;
 
-    // 3. Re-navigate untuk state bersih QuoteWizard
+    // ── Step 3: Re-navigate untuk state bersih QuoteWizard ──
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-    // --- SENYAP: PLAYWRIGHT MENGISI LANGKAH 1 HINGGA 3 ---
-    
+    // ═══════════════════════════════════════════════════════════
+    // SENYAP: PLAYWRIGHT MENGISI LANGKAH 1 → 3 (tanpa Lighthouse)
+    // ═══════════════════════════════════════════════════════════
+
     // Langkah 1: Pilih "New Quote"
     await page.waitForSelector('text="New Quote"', { state: 'visible' });
     await page.click('button:has-text("New Quote")');
@@ -109,49 +114,122 @@ async function runSingleIteration(iterationNumber, browser) {
     await page.click('button[role="combobox"]:has-text("Select sides")');
     await page.click('div[role="option"]:has-text("1 Side (Single Sided)")');
     
-    // Isi Flat Size (biar aman dan realistis)
+    // Isi Flat Size
     const flatWidthInputs = page.locator('input[placeholder="0.0"]');
-    await flatWidthInputs.nth(0).fill('9'); // width
+    await flatWidthInputs.nth(0).fill('9');   // width
     await flatWidthInputs.nth(1).fill('5.5'); // height
 
-    // --- PERSIAPAN TIMESPAN SEBELUM LANJUT KE LANGKAH 4 ---
-    const browserURL = `http://localhost:${PORT}`;
-    pBrowser = await puppeteer.connect({ browserURL });
+    // ═══════════════════════════════════════════════════════════
+    // PERSIAPAN: Bridge Playwright → Puppeteer → Lighthouse Timespan
+    // ═══════════════════════════════════════════════════════════
     const pages = await pBrowser.pages();
     const pPage = pages.find(p => p.url().includes('localhost:3000')) || pages[0];
 
-    // Mulai Lighthouse TIMESPAN mode (throttling devtools fisik diaktifkan)
+    // Setup SRT listener (untuk H2: Server Response Time)
+    // Pada CSR, SRT diharapkan ~0 ms karena tidak ada panggilan ke server.
+    let serverResponseTimeMs = 0;
+    const requestPromise = new Promise(resolve => {
+      const startTimes = new Map();
+      let resolved = false;
+
+      const onReq = (req) => {
+        if (req.method() === 'POST' || req.isNavigationRequest()) {
+          startTimes.set(req.url(), Date.now());
+        }
+      };
+
+      const onRes = (res) => {
+        const req = res.request();
+        if (req.method() === 'POST' || req.isNavigationRequest()) {
+          if (startTimes.has(req.url()) && !resolved) {
+            resolved = true;
+            const srt = Date.now() - startTimes.get(req.url());
+            page.removeListener('request', onReq);
+            page.removeListener('response', onRes);
+            resolve(srt);
+          }
+        }
+      };
+
+      page.on('request', onReq);
+      page.on('response', onRes);
+
+      // Fallback: CSR tidak melakukan POST → resolve 0
+      setTimeout(() => { if (!resolved) { resolved = true; resolve(0); } }, 5_000);
+    });
+
+    // ═══════════════════════════════════════════════════════════
+    // MULAI LIGHTHOUSE TIMESPAN
+    // Tepat sebelum tombol "Next" menuju Step 4 ditekan.
+    // throttlingMethod: 'devtools' → perlambatan fisik via CDP.
+    // ═══════════════════════════════════════════════════════════
     const timespan = await startTimespan(pPage, {
       flags: {
         port: PORT,
-        throttling: customThrottling,
         throttlingMethod: 'devtools',
+        throttling: customThrottling,
       },
     });
 
-    // --- KLIK NEXT: MEMICU RENDER STEP 4 DAN KOMPUTASI GREEDY BSSF ---
+    // ═══════════════════════════════════════════════════════════
+    // KLIK NEXT → MEMICU RENDER STEP 4 + KOMPUTASI BSSF
+    // ═══════════════════════════════════════════════════════════
     const startTime = Date.now();
     await page.click('button:has-text("Lanjut ke Step 4")');
 
-    // Tunggu visualisasi Canvas muncul (artinya komputasi client-side selesai)
-    await page.waitForSelector('canvas', {
-      state: 'attached',
+    // Tangkap SRT (akan resolve 0 pada CSR)
+    serverResponseTimeMs = await requestPromise;
+
+    // ═══════════════════════════════════════════════════════════
+    // TUNGGU KOMPUTASI SELESAI
+    // Komponen CanvasVisualizerCSR menjalankan guillotineBinPack()
+    // dalam useEffect dengan setTimeout(300ms).
+    // Setelah selesai, isCalculating → false, dan canvas di-render.
+    // Kita tunggu sampai:
+    // 1. Step 4 muncul (ada heading "Operational Details")
+    // 2. Teks "Running 2D Guillotine Pack" HILANG (komputasi selesai)
+    // 3. Statistik "Items per Sheet" muncul (artinya canvas sudah di-render)
+    // ═══════════════════════════════════════════════════════════
+    await page.waitForSelector('h2:has-text("Operational Details")', {
+      state: 'visible',
       timeout: 120_000,
     });
 
-    const endTime = Date.now();
-    const executionTime = endTime - startTime;
+    // Tunggu indikator loading hilang (komputasi BSSF selesai)
+    await page.waitForSelector('text="Running 2D Guillotine Pack"', {
+      state: 'hidden',
+      timeout: 120_000,
+    }).catch(() => {
+      // Loading mungkin terlalu cepat / sudah hilang sebelum kita cek
+    });
 
-    // Akhiri Timespan
+    // Tunggu statistik muncul (bukti canvas sudah di-render setelah komputasi)
+    await page.waitForSelector('text="Items per Sheet"', {
+      state: 'visible',
+      timeout: 120_000,
+    });
+
+    // Tambahan: tunggu 500ms ekstra untuk memastikan canvas painting selesai
+    await page.waitForTimeout(500);
+
+    const endTime = Date.now();
+    const wallClockTotal = endTime - startTime;
+
+    // ═══════════════════════════════════════════════════════════
+    // AKHIRI TIMESPAN & EKSTRAK METRIK
+    // ═══════════════════════════════════════════════════════════
     const timespanResult = await timespan.endTimespan();
     const timespanLhr = timespanResult.lhr;
 
-    // Ekstrak metrik
     const tbt = timespanLhr.audits['total-blocking-time']?.numericValue || 0;
     const cls = timespanLhr.audits['cumulative-layout-shift']?.numericValue || 0;
     const inp = timespanLhr.audits['interaction-to-next-paint']?.numericValue || 0;
 
-    console.log(`   TTFB: ${ttfb.toFixed(2)} ms | TBT: ${tbt.toFixed(2)} ms | INP: ${inp.toFixed(2)} ms | CLS: ${cls.toFixed(4)} | Exec: ${executionTime} ms`);
+    if (!isWarmup) {
+      console.log(`   TTFB: ${ttfb.toFixed(2)} ms | TBT: ${tbt.toFixed(2)} ms | INP: ${inp.toFixed(2)} ms | CLS: ${cls.toFixed(4)} | SRT: ${serverResponseTimeMs} ms | Wall: ${wallClockTotal} ms`);
+    } else {
+      console.log(`   [Warm-up] Selesai (Wall: ${wallClockTotal} ms)`);
+    }
 
     return {
       iteration: iterationNumber,
@@ -160,7 +238,8 @@ async function runSingleIteration(iterationNumber, browser) {
         TBT_ms: parseFloat(tbt.toFixed(2)),
         INP_ms: parseFloat(inp.toFixed(2)),
         CLS: parseFloat(cls.toFixed(4)),
-        ExecutionTime_ms: executionTime,
+        SRT_ms: serverResponseTimeMs,
+        WallClock_ms: wallClockTotal,
       },
     };
   } catch (error) {
@@ -177,18 +256,25 @@ async function runSingleIteration(iterationNumber, browser) {
 }
 
 // ============================================================
-// Main
+// Main: Batch Iterasi Otomatis dengan Cooldown
 // ============================================================
 async function runBatchBenchmark() {
-  console.log('╔══════════════════════════════════════════════════════════╗');
-  console.log('║  BATCH BENCHMARK — Skenario Makro (QuoteWizard CSR)    ║');
-  console.log('╠══════════════════════════════════════════════════════════╣');
-  console.log(`║  URL Target      : ${TARGET_URL}`);
+  console.log('╔══════════════════════════════════════════════════════════════════╗');
+  console.log('║  BATCH BENCHMARK — Skenario Makro (QuoteWizard CSR)            ║');
+  console.log('╠══════════════════════════════════════════════════════════════════╣');
+  console.log(`║  Target          : ${TARGET_URL}`);
   console.log(`║  Quantity (N)    : ${values.quantity}`);
   console.log(`║  Total Iterasi   : ${ITERATIONS}`);
   console.log(`║  Cooldown/Iterasi: ${COOLDOWN_SEC} detik`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
+  console.log('╠══════════════════════════════════════════════════════════════════╣');
+  console.log('║  Metrik (H1): TBT & INP  → Kelumpuhan Main Thread             ║');
+  console.log('║  Metrik (H2): SRT        → Server Response Time               ║');
+  console.log('║  Metrik (H3): CLS        → Stabilitas Tata Letak Visual       ║');
+  console.log('║  Baseline   : TTFB       → Dokumen awal (Lighthouse Nav)      ║');
+  console.log('║  Tambahan   : WallClock  → Total klik → visualisasi muncul    ║');
+  console.log('╚══════════════════════════════════════════════════════════════════╝\n');
 
+  console.log('🔄 Meluncurkan browser Chromium...\n');
   const browser = await chromium.launch({
     args: [`--remote-debugging-port=${PORT}`],
     headless: false,
@@ -197,6 +283,19 @@ async function runBatchBenchmark() {
   const allResults = [];
   let successCount = 0;
   let failCount = 0;
+
+  // ============================================================
+  // WARM-UP PHASE
+  // ============================================================
+  console.log('\n🔥 Memulai Fase Pemanasan (Warm-up)...');
+  console.log('   Tujuan: Untuk menetralisir bias dari proses kompilasi Just-In-Time (JIT)');
+  console.log('   pada V8 Engine, sistem melakukan 3 kali iterasi pemanasan (warm-up) yang tidak direkam.');
+  for (let i = 1; i <= 3; i++) {
+    console.log(`\n🔥 Warm-up ${i}/3`);
+    await runSingleIteration(`W-${i}`, browser, true);
+    await sleep(2); // jeda singkat antar warm-up
+  }
+  console.log('\n✅ Pemanasan selesai. Memulai iterasi utama...\n');
 
   for (let i = 1; i <= ITERATIONS; i++) {
     console.log(`\n🔁 Iterasi ${i}/${ITERATIONS}`);
@@ -216,26 +315,69 @@ async function runBatchBenchmark() {
     }
   }
 
+  // ============================================================
+  // Hitung Statistik Agregat (Mean & Std Dev)
+  // ============================================================
   const validResults = allResults.filter(r => r.metrics !== null);
-  const qty = parseInt(values.quantity, 10);
-  const CSV_HEADER = 'No,n,TTFB_ms,TBT_ms,INP_ms,CLS,ExecutionTime_ms';
-  const csvRows = [CSV_HEADER];
+  const metricKeys = ['TTFB_ms', 'TBT_ms', 'INP_ms', 'CLS', 'SRT_ms', 'WallClock_ms'];
 
-  for (const r of validResults) {
-    csvRows.push([r.iteration, qty, r.metrics.TTFB_ms, r.metrics.TBT_ms, r.metrics.INP_ms, r.metrics.CLS, r.metrics.ExecutionTime_ms].join(','));
+  const stats = {};
+  for (const key of metricKeys) {
+    const vals = validResults.map(r => r.metrics[key]);
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const variance = vals.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / vals.length;
+    const stdDev = Math.sqrt(variance);
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+
+    stats[key] = {
+      mean: parseFloat(mean.toFixed(2)),
+      stdDev: parseFloat(stdDev.toFixed(2)),
+      min: parseFloat(min.toFixed(2)),
+      max: parseFloat(max.toFixed(2)),
+    };
   }
 
-  fs.writeFileSync(OUTPUT_FILE, csvRows.join('\n'));
-
-  console.log('\n\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║              📊 RINGKASAN BATCH BENCHMARK               ║');
-  console.log('╠══════════════════════════════════════════════════════════╣');
+  // ============================================================
+  // Tampilkan Ringkasan di Terminal
+  // ============================================================
+  console.log('\n\n╔══════════════════════════════════════════════════════════════════╗');
+  console.log('║              📊 RINGKASAN BATCH BENCHMARK (Makro CSR)          ║');
+  console.log('╠══════════════════════════════════════════════════════════════════╣');
   console.log(`║  Berhasil: ${successCount}/${ITERATIONS}  |  Gagal: ${failCount}/${ITERATIONS}`);
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
-  console.log(`💾 Seluruh hasil batch disimpan di: ${OUTPUT_FILE}`);
+  console.log('╚══════════════════════════════════════════════════════════════════╝\n');
 
+  console.log('📈 Statistik Agregat (Mean ± Std Dev):');
+  console.table(
+    metricKeys.map(key => ({
+      Metric: key,
+      Mean: `${stats[key].mean}`,
+      StdDev: `± ${stats[key].stdDev}`,
+      Min: `${stats[key].min}`,
+      Max: `${stats[key].max}`,
+    }))
+  );
+
+  // ============================================================
+  // Simpan Data ke JSON (Format Flat — Excel-Ready)
+  // ============================================================
+  const excelRows = validResults.map(r => ({
+    'No':           r.iteration,
+    [`n=${qty}`]:    qty,
+    'TTFB_ms':      r.metrics.TTFB_ms,
+    'TBT_ms':       r.metrics.TBT_ms,
+    'INP_ms':       r.metrics.INP_ms,
+    'CLS':          r.metrics.CLS,
+    'SRT_ms':       r.metrics.SRT_ms,
+    'WallClock_ms': r.metrics.WallClock_ms,
+  }));
+
+  fs.writeFileSync(OUTPUT_FILE, JSON.stringify(excelRows, null, 2));
+  console.log(`\n💾 Seluruh hasil batch disimpan di: ${OUTPUT_FILE}`);
+
+  // Cleanup
   await browser.close();
-  console.log('✅ Batch benchmark selesai!\n');
+  console.log('✅ Batch benchmark Makro CSR selesai!\n');
 }
 
 runBatchBenchmark().catch(console.error);
