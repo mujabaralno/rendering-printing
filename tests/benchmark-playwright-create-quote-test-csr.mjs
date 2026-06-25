@@ -36,6 +36,19 @@ const customThrottling = {
 };
 
 // ============================================================
+// Viewport & Screen Emulation — Desktop 1920×1080
+// Lighthouse default formFactor: 'mobile' → override ke desktop
+// ============================================================
+const VIEWPORT = { width: 1920, height: 1080 };
+const desktopScreenEmulation = {
+  mobile: false,
+  width: VIEWPORT.width,
+  height: VIEWPORT.height,
+  deviceScaleFactor: 1,
+  disabled: false,
+};
+
+// ============================================================
 // Output Directory Setup
 // ============================================================
 const RESULT_DIR = path.join(process.cwd(), 'result-test');
@@ -67,7 +80,9 @@ function sleep(seconds) {
 // Single Iteration Runner
 // ============================================================
 async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    viewport: VIEWPORT,
+  });
   const page = await context.newPage();
   let pBrowser = null;
 
@@ -84,12 +99,23 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
       output: 'json',
       throttlingMethod: 'devtools',
       throttling: customThrottling,
+      formFactor: 'desktop',
+      screenEmulation: desktopScreenEmulation,
     });
     const navLhr = navResult.lhr;
     const ttfb = navLhr.audits['server-response-time']?.numericValue || 0;
 
+    // 2.5 Reset viewport setelah Lighthouse Navigation
+    await page.setViewportSize(VIEWPORT);
+
     // ── Step 3: Re-navigate untuk state bersih QuoteWizard ──
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
+
+    // Sanity check: verifikasi viewport dan formFactor (hanya iterasi pertama)
+    if (iterationNumber === 1 || iterationNumber === 'W-1') {
+      console.log(`   🖥️  Viewport Playwright: ${JSON.stringify(page.viewportSize())}`);
+      console.log(`   🖥️  Lighthouse formFactor: ${navLhr.configSettings.formFactor}`);
+    }
 
     // ═══════════════════════════════════════════════════════════
     // SENYAP: PLAYWRIGHT MENGISI LANGKAH 1 → 3 (tanpa Lighthouse)
@@ -168,6 +194,8 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
         port: PORT,
         throttlingMethod: 'devtools',
         throttling: customThrottling,
+        formFactor: 'desktop',
+        screenEmulation: desktopScreenEmulation,
       },
     });
 
@@ -276,7 +304,11 @@ async function runBatchBenchmark() {
 
   console.log('🔄 Meluncurkan browser Chromium...\n');
   const browser = await chromium.launch({
-    args: [`--remote-debugging-port=${PORT}`],
+    args: [
+      `--remote-debugging-port=${PORT}`,
+      '--start-maximized',
+      `--window-size=${VIEWPORT.width},${VIEWPORT.height}`,
+    ],
     headless: false,
   });
 

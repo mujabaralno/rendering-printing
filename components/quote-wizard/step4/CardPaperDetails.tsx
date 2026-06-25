@@ -32,7 +32,10 @@ export default function CardPaperDetails() {
   return (
     <Card className="border-border shadow-sm flex flex-col">
       <CardHeader className="pb-3 border-b border-border bg-muted/20">
-        <CardTitle className="text-foreground text-lg">A. Paper Details</CardTitle>
+        <CardTitle className="flex items-center gap-2.5 text-foreground text-base">
+          <span className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10 font-mono text-xs font-bold text-primary">A</span>
+          Paper Details
+        </CardTitle>
       </CardHeader>
       <CardContent className="pt-4 space-y-4 flex-1">
         

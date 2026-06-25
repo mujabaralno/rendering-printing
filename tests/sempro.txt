@@ -1,0 +1,241 @@
+Pak Jupri (Penguji): Baik, terima kasih. Bismillahirahmanirrahim. Assalamualaikum warahmatullahi wabarakatuh. Yang saya hormati penguji satu Bapak Henri dan saya hormati pembimbing kedua Bapak Ridiyan, dan yang saya banggakan adik kita ini, Alno Mujabar, yang sudah menyelesaikan presentasinya. Pada hari ini kita sekaligus melaksanakan seminar usulan penelitian, yang mana usulan penelitian itu tujuannya adalah untuk mendapatkan masukan. Kemudian jika ada hal-hal yang dianggap keliru, bisa diluruskan di hari ini juga supaya penelitian Mas Alno ini nanti bisa sesuai dengan arahnya yang jelas.
+
+Nah, dari presentasinya Mas Alno hari ini tentang Analisis Komparatif Performa Client Side Rendering (CSR) dan Server Side Rendering (SSR) pada Sistem Estimasi Harga Percetakan Berbasis Next.js, saya belum menyapa nih untuk yang hadir juga hari ini, selamat datang, selamat mengikuti ujian, silakan disaksikan, mudah-mudahan bisa menjadikan masukan dan inspirasi juga.
+
+Oke, dari topik ini saya melihat topiknya sangat menarik ya terkait tentang metode yang digunakan dalam Next.js. Untuk itu saya akan mulai bertanya dari latar belakang dulu ya. Pertanyaan saya yang pertama, kenapa Anda memilih Next.js dalam penelitian ini?
+
+Alno Mujabar: Baik, Pak. Pada judul saya juga... penelitian ini saya pilih Next.js itu dikarenakan Next.js itu menyediakan arsitektur rendering itu. Jadi client side rendering juga server side rendering. Jadi pada framework Next.js sudah menyediakan kedua arsitektur itu, Pak. Tanpa saya harus melakukan perbedaan pada framework gitu.
+
+Pak Jupri: Ada berapa metode rendering dalam Next.js?
+
+Alno Mujabar: Terdapat empat, Pak, rendering.
+
+Pak Jupri: Apa saja?
+
+Alno Mujabar: Ada Server Side Rendering (SSR), ada Client Side Rendering (CSR), ada Incremental Static Regeneration (ISR), dan juga yang terakhir Static Site Generation (SSG), Pak.
+
+Pak Jupri: CSR, SSR, ISR, dan juga SSG, Pak. Static site generation. Oke. Nah, kenapa nih harus membandingkan CSR dengan SSR?
+
+Alno Mujabar: Eh yang pertama, untuk CSR ini karena semua prosesnya itu dilakukan di sisi server—lalu di Next.js ini melakukan semua prosesnya itu di sisi server, jadi peramban itu atau browser hanya menerima hasil yang sudah utuh gitu, Pak. Dan juga kan di sini pada penelitian saya terdapat beban komputasi juga atau compute heavy. Jika pada sisi client side rendering, itu pada main thread peramban akan mengalami... bukan crash, freeze. Jadi ada jeda freeze di situ saat melakukan beban komputasi. Sementara di sisi server melakukan pendelegasian beban komputasi ke sisi server, sehingga di browser itu tidak freeze tetapi ada biaya yang dibayar, Pak, yaitu server response time tersebut gitu.
+
+Pak Jupri: Dari performanya mana yang paling mudah? Atau mana yang paling ringan?
+
+Alno Mujabar: Dari yang paling ringan di antara kedua arsitektur itu, Pak, sebenarnya bukan secara ringan gitu, Pak. Jadi lebih berbeda di mana komputasi itu dilakukan, Pak. Jadi jika CSR komputasinya dilakukan di peramban, dan kalau SSR itu dilakukannya di server, Pak. Jadi tidak ada yang lebih ringan. Cuma berbeda cara memasaknya aja gitu.
+
+Pak Jupri: Ini kan dalam proses merender data kan? Data, UI, segala macam Pak. Mana data yang ada di sisi client... itu bisa dijelaskan gak? Sisi client itu yang menjadi apa... sama yang menjadi bagian server tuh apa saja?
+
+Alno Mujabar: Untuk di sisi client mulai dari proses rendering-nya ya Pak. Untuk di sisi client itu mulai dari pemrosesan JavaScript, HTML, apa segala macamnya itu berada di peramban, Pak. Jadi semua eksekusi...
+
+Pak Jupri: Peramban itu apa?
+
+Alno Mujabar: Browser. Jadi ada di browser, Pak. Jadi semua prosesnya berada di browser. Sementara kalau SSR ini semua prosesnya mulai dari pemrosesan HTML, JavaScript, dan lain-lainnya itu dilakukan di sisi server, Pak.
+
+Pak Jupri: Database adanya di mana?
+
+Alno Mujabar: Database itu kan masuknya di sisi backend, Pak.
+
+Pak Jupri: Iya, adanya di server apa di client?
+
+Alno Mujabar: Di server.
+
+Pak Jupri: Di server. Oke, oke, oke. Nah, terus apa nih masalahnya dari performance ini yang harus diselesaikan di penelitian ini?
+
+Alno Mujabar: Baik, Pak. Terima kasih. Saya akan menjawab. Permasalahannya itu jika dieksekusi di sisi client, maka browser akan mengalami freeze, Pak. Jadi tidak bisa digerakkan. Karena browser ini bersifat single thread, jadi dia tidak bisa melakukan dua pekerjaan sekaligus. Jadi dia harus melakukan komputasi dulu lalu baru bisa merender komponen. Lalu kalau di sisi server semua proses komputasinya dilakukan di sisi server dan browser itu terbebas dari yang namanya freeze, Pak. Masih bisa digerakkan, masih interaktif. Jadi itu yang jadi permasalahan saya adalah... untuk berada di sisi server itu ada biaya yang dibayar yaitu... aplikasi UI yang freeze... sementara jika di sisi server... main thread-nya tetap bisa digerakkan, browser-nya bisa digerakkan, tetapi terdapat biaya server response yang lebih besar gitu Pak.
+
+Pak Jupri: Bisa nggak kasih contoh model penggunaan SSR sama CSR itu? Contoh yang paling gampang deh.
+
+Alno Mujabar: Bisa, Pak. Kalau di CSR, ibaratnya kita memasak... kan di zaman sekarang ada dua cara untuk agar kita bisa makan, bisa masak sendiri atau pesan online, Pak. Nah, kalau CSR ini kita memasak sendiri di dapur. Sementara SSR ini dia memesan ojek online. Jadi kita hanya menerima makanan yang sudah jadi gitu.
+
+Pak Jupri: Analogi yang bagus ya. Oke. Terus untuk memilih objeknya di sini... kenapa objeknya itu sistem estimasi harga percetakan?
+
+Alno Mujabar: Karena di sini saya menggunakan metode pengujian menggunakan Lighthouse, Pak. Google Lighthouse, yang di mana metrik pada Lighthouse ini akan terekam pada fase run time juga, Pak. Bukan pada fase navigasi awal, Pak. Jadi saya menguji pada sistem percetakan karena mewakili sistem yang...
+
+Pak Jupri: Berarti sistemnya ini online?
+
+Alno Mujabar: Online.
+
+Pak Jupri: Sistem percetakannya ini online?
+
+Alno Mujabar: Online. Online.
+
+Pak Jupri: Apa nama sistemnya?
+
+Alno Mujabar: Untuk sistemnya belum punya nama spesifik karena di sini saya kan menggunakan metode eksperimental komparatif. Jadi saya menguji sistem dengan arsitektur yang berbeda.
+
+Pak Jupri: Iya maksudnya kan sistem estimasi harga ini kan katanya online. Masa mau diukur, mau dibandingkan menggunakan CSR atau SSR tadi kan. Ya sistemnya itu berarti kan online kan? Bisa diakses lewat...
+
+Alno Mujabar: Bisa diakses. Bisa.
+
+Pak Jupri: Bisa diakses lewat browser gitu kan. Berarti kan online kan. Berbasis web. Oke. Nah, selama sistemnya itu digunakan, apakah ada masalah tentang proses rendering-nya... atau mungkin dari performanya, apa dia pakai SSR atau CSR itu? Kalau dari penjelasan Alno kan secara otomatis dia pasti pakai CSR kan? Karena posisinya kita adanya di client side. Nah, permasalahannya apaan? Menggunakan sistem itu dia per proses menggunakan SSR atau CSR itu, pertanyaannya kan. Sehingga Alno harus membandingkan...
+
+Alno Mujabar: Sebenarnya, pada arsitektur website itu sendiri baik di browser apa segala macamnya terdapat dua metode itu tadi Pak, yaitu client side rendering juga server side rendering. Jadi server side rendering juga bukan berarti semua prosesnya tidak bisa muncul di client Pak. Server side rendering juga sama seperti client side rendering cuma berbedanya adalah server side rendering dieksekusi di sisi server gitu Pak.
+
+Pak Jupri: Iya, kan bedanya itu. Kalau CSR kan di-render-nya di sisi browser. Kalau SSR itu di sisi server.
+
+Alno Mujabar: Sama-sama di sisi client Pak kalau di-render. Kan muncul di browser pengguna.
+
+Pak Jupri: Iya, tapi di prosesnya dibuatnya di server kan?
+
+Alno Mujabar: Untuk SSR... Heeh. Betul, Pak. Iya.
+
+Pak Jupri: Nah sementara kalau misalnya sistem estimasi harga ini kan dia posisinya online. Berarti ada di sisi server, ada juga di sisi client kan? Misalnya database, data harga itu ada di sisi server. Untuk mengakses sistemnya berarti kita akses lewat sisi client, kan gitu kan?
+
+Alno Mujabar: Iya.
+
+Pak Jupri: Dari penjelasan tadi Alno kan ada empat model rendering dalam Next.js. Selain CSR sama SSR, ada apa tadi?
+
+Alno Mujabar: ISR sama SSG. Iya.
+
+Pak Jupri: Nah kenapa nggak membandingkannya dengan itu? Salah satunya misalnya SSG.
+
+Alno Mujabar: SSG berdasarkan dokumentasi pada Next.js itu sendiri cocok untuk digunakan pada website yang statis Pak. Jadi hanya untuk nge-read datanya bukan interaktif pada website-nya gitu Pak. Untuk ISR sendiri itu cocoknya hanya untuk seperti pada blog artikel gitu Pak. Jadi dia akan memperbarui datanya setiap waktu yang ditentukan, semisal 60 detik sekali baru datanya diperbarui. Jadi kurang cocok untuk kasus yang ini.
+
+Pak Jupri: Kalau selanjutnya, untuk output-nya nanti apa ini penelitian ini?
+
+Alno Mujabar: Output-nya adalah semacam kompromi teknis gitu Pak. Jadi jika ingin menggunakan client side rendering sesuai dengan kajian teori yang ada, maka browser pada pengguna akan freeze Pak. Kalau di sisi server side rendering browsernya tidak akan freeze, tetapi terdapat latensi jaringan yang besar Pak.
+
+Pak Jupri: Oke, saya baca dari laporan saya melihat banyak sekali ada kata performa. Nah, kalau performa menurut Alno sendiri itu apa?
+
+Alno Mujabar: Performa itu... Boleh dibaca dilihat dari salindia ya. Baik dari salindianya.
+
+Pak Jupri: Iya, tadi ada isi performa. Maksudnya bagaimana tren degradasi performa. Itu seperti apa maksudnya?
+
+Alno Mujabar: Oh maksudnya performanya dulu ya Pak ya? Atau tren degradasi performanya? Kalau tren degradasi performa ini kan tadi saya menyebutkan ada empat injeksi beban. Heeh. Yang pertama N10 atau pada 10 potongan. Lalu ada N30 atau 30 potongan. Lalu ada N50 atau 50 potongan. Terus yang terakhir ada N70, 70 potongan, Pak.
+
+Pak Jupri: Nanti untuk parameter pengujiannya ada? Menggunakan parameter apa? Untuk teknik analisis data atau komparasi itu pakai parameter apa saja?
+
+Alno Mujabar: Untuk metrik yang diuji itu ada Total Blocking Time, ada Interactive to Next Paint, ada Cumulative Layout Shift, lalu Time to First Byte, dan juga ada Server Response Time. Nanti diuji menggunakan Shapiro-Wilk untuk mendapatkan nilai apakah datanya terdistribusi normal atau tidak normal. Jika normal akan menggunakan Independent Sample T-Test, jika datanya tidak terdistribusi normal akan menggunakan Mann-Whitney U Test.
+
+Pak Jupri: Oh ini ada analisis data juga ya berarti ya? Analisis data SPSS. Mengumpulkan datanya nanti pakai teknik apa?
+
+Alno Mujabar: Jadi nanti saya melakukan automasi testing Pak. Jadi saya menggunakan tools. Dari tools itu nanti mendapatkan metrik-metrik yang saya sebutkan tadi, ada TBT, INP, CLS, juga SRT. Nanti setiap bebannya saya kumpulkan, dilakukan 30 kali iterasi, pada setiap beban dan juga arsitektur.
+
+Pak Jupri: Terus tadi matriksnya yang tadi disebutkan Alno tadi apa saja?
+
+Alno Mujabar: Total Blocking Time. Lalu ada Interactive to Next Paint. Lalu ada Cumulative Layout Shift. Lalu ada Server Response Time. Lalu yang terakhir ada Time to First Byte, Pak.
+
+Pak Jupri: Tidak menggunakan speed index?
+
+Alno Mujabar: Tidak, Pak.
+
+Pak Jupri: Terus itu datanya kan nanti dianalisis pakai SPSS ya? Nah itu sumber datanya dari mana nanti?
+
+Alno Mujabar: Jadi nanti saya lakukan automation testing menggunakan Playwright dan juga Puppeteer Core. Di Playwright itu nanti dia melakukan interaktivitas sendiri, kemudian di Puppeteer Core ini dia merekam metrik-metrik yang ada di Google Lighthouse itu, Pak. Jadi datanya saya dapatkan dari situ.
+
+Pak Jupri: Oh dari situ. Ya begitu nanti tinggal dianalisa saja pakai SPSS gitu ya?
+
+Alno Mujabar: Iya betul, Pak.
+
+Pak Jupri: Kalau aplikasi tadi, contoh sistem estimasi harga yang di percetakannya itu seperti apa? Boleh ada di laporannya ya?
+
+Alno Mujabar: Tidak ada, Pak.
+
+Pak Jupri: Belum ditampilin? Ada datanya? Oke yang terakhir ya berarti ya nanti ya. Kalau misalkan nanti datanya selalu berubah... berarti itu kan tergantung dari hasil model yang digunakan ya? Pemilihan kita kan ini membandingkan apakah CSR lebih baik atau SSR lebih baik kan? Nanti kamu lakukan dua kali pengujian?
+
+Alno Mujabar: Iya Pak, betul. Menggunakan CSR dan SSR. Di CSR itu ada uji mikro dan juga uji makro. Di situ saya mendapatkan 240 data Pak.
+
+Pak Jupri: Oke. Ya nanti kita lihat hasil pengujiannya ya. Sementara itu dari saya Pak. Saya kembalikan lagi ke ketua sidang. Terima kasih Pak.
+
+Pak Henri (Ketua Sidang / Pembimbing 1): Baik, terima kasih Pak Jupri atas arahan dan saran-saran. Biar nanti dicatat ya Alno. Selanjutnya kesempatan kedua saya berikan kepada Bapak Ridiyan Gustiana selaku pembimbing pendamping. Waktu dan tempat saya persilakan, Pak.
+
+Pak Ridiyan (Pembimbing 2): Baik, terima kasih Pimpinan Sidang. Bismillahirrahmanirrahim. Assalamualaikum warahmatullahi wabarakatuh. Yang saya hormati Bapak penguji, Bapak Maulana Ryan Jupri dan juga Bapak Henri selaku pembimbing pertama. Kemudian adik-adik mahasiswa, dan yang mempresentasikan di sini Saudara Alno. Sedikit saja mungkin Alno ya, karena tadi sudah dibahas terlebih dahulu sama Pak Jupri, sebetulnya untungnya posisi saya sebagai pembimbing kedua karena memang saya bukan ahlinya di bidang ini ya. Secara umum mungkin boleh ngelihat hipotesis No? Nah, hipotesis itu apa No?
+
+Alno Mujabar: Hipotesis itu praduga, Pak. Dugaan sementara mungkin Pak.
+
+Pak Ridiyan: Praduga sementara. Oke. Lihat hipotesisnya. Ada berapa?
+
+Alno Mujabar: Ada enam, Pak.
+
+Pak Ridiyan: Ada enam. Tadi, kemudian ada metode pengujian. Ya. Ada luaran penelitian tadi. Nah, apakah luaran yang diharapkan dan metode pengujian ini menjawab hipotesis atau tidak? Coba cek. Luaran nomor satu nih, untuk menjawab hipotesis yang mana?
+
+Alno Mujabar: Oh ini tidak menjawab Pak. Yang pertama tidak menjawab. Karena namanya output yang diharapkan dari penelitian ini, kan ada terdapat celah pada penelitian, Pak. Karena belum pernah menguji pada compute heavy. Jadi di sini saya memasukkan ini, Pak. Bahwa penelitian saya ini akan menghasilkan bukti empiris mengenai komparasi CSR dan juga SSR pada antarmuka yang compute heavy.
+
+Pak Ridiyan: Ini tidak menjawab hipotesis. Analoginya sederhananya begini. Contoh, masalahnya itu kita sariawan. Dugaan sementara untuk sariawan apa aja? Bisa aja lambung, bisa aja radang tenggorokan, bisa aja gusinya bengkak. Paham kan ya itu hipotesis kan ya, dugaan sementara. Nah, sedangkan luaran yang diharapkan oleh Alno tiba-tiba kaki saya sembuh. Tidak menjawab hipotesis. Paham nggak?
+
+Alno Mujabar: Paham, Pak.
+
+Pak Ridiyan: Nah, itu yang saya pertanyakan ya. Kalau misalnya sudah ada hipotesis tadi, H1, H2, 3, 4 sampai dengan 6, itu adalah dugaan sementara. Masalah utamanya apa No, pada penelitian ini?
+
+Alno Mujabar: Masalah utamanya karena algoritma 2D bin packing ini berat, Pak. Jadi ingin mengetahui seberapa ambang batas atau threshold dari browser itu sendiri, Pak.
+
+Pak Ridiyan: Oke, kita kunci aja itu ya masalah utamanya. Nah hipotesis yang pertama tuh dugaan sementaranya bisa gara-gara A, bisa gara-gara C, bisa gara-gara B. Yang diharapkan itu atau metode pengujiannya ya harus menguji si hipotesis. Jangan sampai ya seperti tadi, analogi sederhananya sariawan terus dugaan sementaranya lambung, panas dalam, tenggorokan... Nah, yang diuji tiba-tiba kaki, terus luarannya pun juga kaki. Ya jadi nanti saran saya ya, ada miss di dalam apa yang Alno rencanakan. Yang mau diuji dugaan sementara yang terjadi, tapi luarannya tidak sinkron dengan apa yang Alno rencanakan. Itu saja mungkin dari saya. Terima kasih atas waktunya. Saya kembalikan ke pimpinan sidang. Terima kasih. Assalamualaikum warahmatullahi wabarakatuh.
+
+Pak Henri (Ketua Sidang): Waalaikumsalam warahmatullahi wabarakatuh. Terima kasih kepada Bapak Ridiyan atas catatannya. Terakhir dari saya selaku ketua sidang, sekaligus pembimbing utama. Mungkin dari awal itu problem kita hari ini tuh gara-gara Alno tidak menyebutkan dulu reasoning di awal. Alno perlu menjelaskan dulu ke kita semua, kenapa harus sistem informasi harga percetakan, kenapa bukan yang lain. Habis itu, kenapa pakai CSR dan SSR. Di awal tuh kita diskusinya bicara tentang teknik di belakang sama metode. Kita tidak bicara dulu di awal fundamentalnya kenapa sistem informasi percetakan, kenapa bukan sistem akademik, atau yang lain. Coba dijelaskan dulu ke sini, kenapa pakai pada sistem estimasi harga atau lebih spesifik sebenarnya ada nggak sih sampel nyata dari sistem estimasi harga percetakannya tuh seperti apa. Biar di sininya ada gambaran, kenapa saya ngambil judul itu.
+
+Alno Mujabar: Kenapa saya mengambil sistem estimasi percetakan Pak, yang pertama karena saya melakukan pengujian pada fase run time Pak, jadi bukan pada initial load-nya. Kemudian pada sistem percetakan ini terdapat sistem pemotongan kertas yang jika dikonstruksi ke dalam komputer itu berat Pak, atau bisa dikatakan compute heavy. Jadi saya melakukan pengujiannya itu saat proses komputasi itu sedang berjalan Pak. Maka pada sistem printing ini bisa menjadi representasi dari sistem yang melakukan kalkulasi setelah navigasi awal Pak.
+
+Pak Henri: Ada contohnya tadi? Sistem estimasi harga tuh web-nya apa gitu, bentuknya gimana? Ada nggak di komputer Alno? Searching aja lah. Contohnya kayak gimana, biar ada gambaran buat kita.
+
+Alno Mujabar: Seperti ini contohnya sistem... Di sini pembuatan penawaran estimasi harganya atau quotation-nya Pak. Jadi di sini user menginput kayak product name, terus ada quantity. Tadi saya menyebutkan banyak n sama dengan apa itu quantity, jadi sama dengan potongan. Potongannya ada 100 potongan, lalu ada warna apa segala macamnya.
+
+Pak Henri: Sebentar, Alno. Sepertinya Alno harus ngasih lihat dulu produk akhir dari quotation itu gimana bentuknya? Nah, jadi ceritanya dia tuh mau menguji kalau ada satu aplikasi yang khusus untuk produk seperti ini, beban kerjanya harus gimana gitu.
+
+Alno Mujabar: Ini contoh quotation, Pak. Output dari quotation itu sendiri, Pak. Jadi penawaran harga.
+
+Pak Henri: Nah, kamu mau teliti yang mau di CSR sama SSR tuh apanya?
+
+Alno Mujabar: Mungkin di sini aja kayak lebih jelas ya Pak. Di sini menggunakan metode client side rendering. Jadi ketika dieksekusi melakukan kalkulasi, di situ ada beban freeze Pak, jadi nggak bisa digerakkan. Sementara jika menggunakan server side rendering, browsernya masih tetap interaktif Pak, masih bisa digerakkan. Cuma ada proses dari server untuk mengirim semua payload-nya ke sisi client seperti itu, Pak. Di sini terdapat ada kertas plano yang besar, berukuran 650 mm * 1000 mm, semisal saya ingin mencetak business card Pak dengan ukuran 90 * 55. Di sini terdapat 50 potongan.
+
+Pak Henri: Oh maksudnya potongan itu di satu kertas plano tadi?
+
+Alno Mujabar: Iya. Jadi beban komputasinya ada pada perhitungan ininya, Pak.
+
+Pak Henri: Oh jadi resume-nya apa itu mau menguji kira-kira metode apa yang paling cocok kalau saya punya perusahaan percetakan, gitu kan. Terus mau bikin produk seperti ini, kira-kira gimana kalau pakai CSR, gimana kalau pakai SSR di aplikasi yang saya punya ini. Misalkan ada orang pesen "saya mau bikin kartu nama 1000 unit", nah si Alno ini mau menguji proses komputasi yang berlangsung itu kira-kira lebih cocok pakai metode apa. Mungkin kira-kira gitu. Nah, output-nya apa dari sini? Itu yang tadi ditanya sama Pak Ridiyan tuh. Nanti disesuaikan dengan hipotesisnya. Terus saya juga baru lihat sini saya waktu pembimbingan nggak ada hipotesis-hipotesis itu gitu loh. Itu ada berapa coba?
+
+Alno Mujabar: Ada enam, Pak.
+
+Pak Henri: Kita butuh nggak, Pak Jupri, hipotesisnya, dugaannya? Maksudnya kan kalau hipotesis kan dugaannya. Tadi kan contohnya kamu udah tampilin ini. Itu kan menggunakan SSR berarti ya?
+
+Alno Mujabar: Ini SSR Pak.
+
+Pak Henri: Terus kalau contoh menggunakan client side, jadinya berapa potongan?
+
+Alno Mujabar: Sama-sama 50 potongan Pak.
+
+Pak Henri: Sama-sama 50 potongan. Dari situ kan sudah bisa melihat hipotesisnya kan, terjadi perbedaan ada tidak, kan di situ kan. Nah maksudnya itu. Menggunakan hipotesis itu untuk membandingkan, apakah performa CSR sama SSR untuk melihat hasil potongan itu, ada atau tidak. Berarti untuk membandingkan, menjawab dugaan itu bisa diterima atau tidak. Ini tools-nya pakai tools buatan Alno atau tools apa ini? Ini smart printing kan?
+
+Alno Mujabar: Tujuannya untuk menguji komputasi yang tadi Pak. Betul Pak. Kalau ini buatan saya Pak. Emang ini yang mau saya uji.
+
+Pak Henri: Oke dari sisi client side sama server side. Mungkin itu tadi ya, jadi masukannya diperhatikan konteksnya baik dari segi penulisan ataupun dari segi pemaparan gitu ya. Kalau dari segi penulisan mungkin nanti dilihat aja kekurangannya, kalau saya sih ngerasain font-nya kerasa terlalu besar gitu, tapi enggak tahu emang aturannya terlalu besar atau gimana. Eh font-nya tuh seperti bukan 12 gitu. Selanjutnya mungkin Alno dipersilakan keluar dulu, nanti kita akan diskusi sama-sama mengenai kelayakan penelitian ini seperti apa. Tunggu dulu sekitar dua sampai 3 menit.
+
+Alno Mujabar: Baik Pak. Tolong dimute dulu sebentar.
+
+Pak Henri: Oh baik. Ya, teman-teman, mohon maaf ya. Silakan nanti masuk lagi semuanya ketika sudah dipanggil.
+
+(Sesi Diskusi Penguji & Pembimbing)
+
+Pak Henri: Gimana Pak Henri... eh Gimana Pak Ridiyan? Nah itu, Pak Jupri nah, sebagai penguji gimana?
+
+Pak Jupri: Kalau saya kan tadi dia kan bikin tools ya, bikin aplikasi smart printing. Ya udah lah karena kita nggak dapat real dari perusahaannya kan, dia bikin dummy sendiri terus dia yang uji, ya boleh aja lah. Terus yang saya tangkap dulu dia tuh pengin ngitung kinerja beban komputasinya gitu kan. Kalau pakai CSR dia pengin ngekalkulasi dari browser jadinya kayak gimana, di sisi server kayak gimana gitu, tujuannya itu kan. Nah, tujuannya berarti luaran dan hipotesis awalnya dugaan apakah nanti ada selisih, lebih cepat pakai CSR atau SSR nanti baru diputuskan oleh penelitian ini. Lewat response time dan blablabla tadi. Kayaknya gitu kalau yang saya tangkap.
+
+Pak Henri: Berarti bisa dia menggunakan matriks ya, hipotesisnya berbasis matriks.
+
+Pak Ridiyan: Ada 5 metode matriks yang tadi disebutin, ya itu aja sih. Berarti layaknya mah layak dengan catatan ya diselaraskan aja itunya hipotesis sama yang itu dan ditambah tadi di penulisan belum dijelasin yang tadi.
+
+Pak Henri: Nah, ini kan template fakultas, kalau nggak salah template fakultas tuh yang 14-an kalau nggak salah.
+
+Pak Ridiyan: 14. Ya dia ngikutin template.
+
+Pak Henri: Pantesan rasanya kok gede banget gitu.
+
+Pak Ridiyan: Jadi oke. Nanti dipanggil aja lagi. Ya intinya lulus ya? Bisa ya lanjut?
+
+Pak Henri: Lanjut dengan catatan itu. Boleh dibantu di-invite lagi.
+
+(Alno Masuk Kembali ke Ruang Sidang)
+
+Pak Henri: Oke, berdasarkan hasil musyawarah tadi, dengan mempertimbangkan pemaparan dan sesi diskusi yang sudah dilaksanakan, tim penguji memutuskan usulan penelitian dari Saudara Alno ini layak diterima dengan syarat gitu ya, nanti diperjelas atau dipertegas di bagian latar belakangnya. Kenapa pemilihan objek atau sistem estimasi harga tuh digunakan. Kemudian nanti mungkin ada perbaikan redaksi mengenai hipotesis dan luaran yang ditargetkannya. Jadi seperti itu, diterima dengan revisi. Kemudian nanti bisa dilakukan perbaikan mungkin seminggu sampai dua minggu setelah sidang usulan penelitian ini. Adapun mengenai teknis perbaikan nanti bisa disesuaikan dengan catatan yang diberikan oleh penguji ataupun pembimbing. Baik, sebelum ditutup, mungkin ada yang mau ditanyakan terlebih dahulu atau sudah jelas Alno?
+
+Alno Mujabar: Sudah Pak, sudah jelas.
+
+Pak Henri: Oke, demikian sidang usulan penelitian pada hari ini, saya ucapkan terima kasih kepada penguji dan pembimbing pendamping atas kehadiran waktu dan pemikirannya. Saya tutup, wabillahi taufik wal hidayah, wassalamualaikum warahmatullahi wabarakatuh.
+
+Semua: Waalaikumsalam warahmatullahi wabarakatuh.
+
+Pak Henri: Selamat, Pak. Masih ada mata kuliah?
+
+Alno Mujabar: Masih Pak. Ah, kebetulan bisa diurus ya.
+
+Pak Henri: Sip, satu-satu aja pelan-pelan diurus. Jadi intinya beres dulu No. Skripsinya beres, terus meskipun nanti mata kuliah kan belum keluar, bisa daftar dulu daftar sidang akhir. Jadi kan sidang akhir itu batasnya sampai 27 Juni. Selama sebelum 27 Juni udah daftar, meskipun nanti sidangnya dilaksanakan di Juli, itu kamu enggak masuk biaya perpanjangan semester. Enggak nge-charge lagi gitu. Meskipun misalkan transkrip nilai belum keluar, enggak apa-apa, yang penting sudah ada approval, kemudian persyaratannya yang lain sudah kayak TOEFL, Ujikom, itu udah. Tinggal nanti pas sidang akhirnya dilaksanakan ketika transkripnya udah keluar. Gitu.
+
+Alno Mujabar: Siap. Semangat.

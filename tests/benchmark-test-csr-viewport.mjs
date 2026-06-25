@@ -24,6 +24,11 @@ const ITERATIONS   = parseInt(values.iterations, 10);
 const COOLDOWN_SEC = parseInt(values.cooldown, 10);
 
 // ============================================================
+// Viewport Configuration — 1920×1080 (Full HD)
+// ============================================================
+const VIEWPORT = { width: 1920, height: 1080 };
+
+// ============================================================
 // Lighthouse Throttling (devtools mode)
 // Navigation: Untuk TTFB baseline
 // Timespan:   Untuk TBT, INP, CLS (membuktikan H1 & H3 bahwa CSR
@@ -38,11 +43,7 @@ const customThrottling = {
   cpuSlowdownMultiplier: 4,
 };
 
-// ============================================================
-// Viewport & Screen Emulation — Desktop 1920×1080
-// Lighthouse default formFactor: 'mobile' → override ke desktop
-// ============================================================
-const VIEWPORT = { width: 1920, height: 1080 };
+// Screen Emulation — Paksa Lighthouse ke desktop (bukan default mobile 412×823)
 const desktopScreenEmulation = {
   mobile: false,
   width: VIEWPORT.width,
@@ -63,7 +64,7 @@ if (!fs.existsSync(RESULT_DIR)) {
 const existingFiles = fs.readdirSync(RESULT_DIR);
 let maxNum = 0;
 existingFiles.forEach(file => {
-  const match = file.match(/^pengujian-csr-(\d+)\.json$/);
+  const match = file.match(/^pengujian-csr-(\\d+)\\.json$/);
   if (match) {
     const num = parseInt(match[1], 10);
     if (num > maxNum) maxNum = num;
@@ -83,6 +84,7 @@ function sleep(seconds) {
 // Single Iteration Runner
 // ============================================================
 async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
+  // Viewport 1920×1080 diterapkan di sini untuk setiap context baru
   const context = await browser.newContext({
     viewport: VIEWPORT,
   });
@@ -93,7 +95,7 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
     // 1. Navigasi awal via Playwright
     await page.goto(TARGET_URL, { waitUntil: 'domcontentloaded' });
 
-    // 2. Lighthouse NAVIGATION mode (untuk TTFB) — formFactor: desktop
+    // 2. Lighthouse NAVIGATION mode (untuk TTFB)
     const navResult = await lighthouse(TARGET_URL, {
       port: PORT,
       onlyCategories: ['performance'],
@@ -107,6 +109,8 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
     const ttfb = navLhr.audits['server-response-time']?.numericValue || 0;
 
     // 2.5 Reset viewport setelah Lighthouse Navigation
+    //     Lighthouse mengubah emulasi device via CDP (biasanya ke mobile viewport).
+    //     Kita perlu reset kembali ke 1920×1080 agar halaman render dalam layout desktop.
     await page.setViewportSize(VIEWPORT);
 
     // 3. Re-navigate setelah Lighthouse Navigation (karena ia me-reload page)
@@ -117,6 +121,7 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
     if (iterationNumber === 1 || iterationNumber === 'W-1') {
       console.log(`   🖥️  Viewport Playwright: ${JSON.stringify(page.viewportSize())}`);
       console.log(`   🖥️  Lighthouse formFactor: ${navLhr.configSettings.formFactor}`);
+      console.log(`   🖥️  Lighthouse screenEmulation: ${JSON.stringify(navLhr.configSettings.screenEmulation)}`);
     }
 
     // 4. Isi Form dengan Playwright
@@ -243,8 +248,10 @@ async function runSingleIteration(iterationNumber, browser, isWarmup = false) {
 async function runBatchBenchmark() {
   console.log('╔══════════════════════════════════════════════════════════╗');
   console.log('║  BATCH BENCHMARK — Skenario Mikro (Uji Isolasi CSR)    ║');
+  console.log('║  🖥️  Viewport: 1920×1080 (Full HD)                     ║');
   console.log('╠══════════════════════════════════════════════════════════╣');
   console.log(`║  URL Target      : ${TARGET_URL}`);
+  console.log(`║  Viewport        : ${VIEWPORT.width} x ${VIEWPORT.height}`);
   console.log(`║  Container       : ${values.width} x ${values.height}`);
   console.log(`║  Quantity (N)    : ${values.quantity}`);
   console.log(`║  Total Iterasi   : ${ITERATIONS}`);
@@ -258,7 +265,9 @@ async function runBatchBenchmark() {
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 
   // Launch browser SEKALI untuk seluruh batch
-  console.log('🔄 Meluncurkan browser Chromium...\n');
+  // --start-maximized memaksimalkan jendela browser,
+  // viewport tetap diatur eksplisit 1920×1080 di newContext() untuk konsistensi
+  console.log('🔄 Meluncurkan browser Chromium (viewport 1920×1080)...\n');
   const browser = await chromium.launch({
     args: [
       `--remote-debugging-port=${PORT}`,
@@ -272,18 +281,6 @@ async function runBatchBenchmark() {
   let successCount = 0;
   let failCount = 0;
 
-  // ============================================================
-  // WARM-UP PHASE
-  // ============================================================
-  console.log('\n🔥 Memulai Fase Pemanasan (Warm-up)...');
-  console.log('   Tujuan: Untuk menetralisir bias dari proses kompilasi Just-In-Time (JIT)');
-  console.log('   pada V8 Engine, sistem melakukan 3 kali iterasi pemanasan (warm-up) yang tidak direkam.');
-  for (let i = 1; i <= 3; i++) {
-    console.log(`\n🔥 Warm-up ${i}/3`);
-    await runSingleIteration(`W-${i}`, browser, true);
-    await sleep(2); // jeda singkat antar warm-up
-  }
-  console.log('\n✅ Pemanasan selesai. Memulai iterasi utama...\n');
 
   for (let i = 1; i <= ITERATIONS; i++) {
     console.log(`\n🔁 Iterasi ${i}/${ITERATIONS}`);
@@ -333,6 +330,7 @@ async function runBatchBenchmark() {
   console.log('\n\n╔══════════════════════════════════════════════════════════╗');
   console.log('║              📊 RINGKASAN BATCH BENCHMARK               ║');
   console.log('╠══════════════════════════════════════════════════════════╣');
+  console.log(`║  Viewport   : ${VIEWPORT.width} x ${VIEWPORT.height}`);
   console.log(`║  Berhasil: ${successCount}/${ITERATIONS}  |  Gagal: ${failCount}/${ITERATIONS}`);
   console.log('╚══════════════════════════════════════════════════════════╝\n');
 

@@ -6,11 +6,7 @@ import {
   type InputItem,
   type PackingResult,
 } from "@/utils/exactGuillotine";
-import type { ItemEntry } from "@/hooks/useBinPacking"; // Reuse type from CSR hook
-
-// ============================================================
-// Constants
-// ============================================================
+import type { ItemEntry } from "@/hooks/useBinPacking"; 
 
 const DEFAULT_CONTAINER_WIDTH = 650;
 const DEFAULT_CONTAINER_HEIGHT = 1000;
