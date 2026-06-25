@@ -18,7 +18,7 @@ const options = {
 };
 const { values } = parseArgs({ args: process.argv.slice(2), options });
 
-const TARGET_URL   = `http://localhost:3000${values.url}`;
+const TARGET_URL   = `${values.url}`;
 const PORT         = 9222;
 const ITERATIONS   = parseInt(values.iterations, 10);
 const COOLDOWN_SEC = parseInt(values.cooldown, 10);

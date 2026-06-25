@@ -2,51 +2,51 @@
   {
     "No": 1,
     "n=50": 50,
-    "TTFB_ms": 7,
-    "TBT_ms": 7739.01,
-    "INP_ms": 7833.55,
-    "CLS": 0.0145,
+    "TTFB_ms": 32,
+    "TBT_ms": 7753.76,
+    "INP_ms": 7883.69,
+    "CLS": 0.0089,
     "SRT_ms": 0,
-    "WallClock_ms": 8001
+    "WallClock_ms": 8023
   },
   {
     "No": 2,
     "n=50": 50,
-    "TTFB_ms": 3,
-    "TBT_ms": 7695.35,
-    "INP_ms": 7819.43,
-    "CLS": 0.0145,
+    "TTFB_ms": 33,
+    "TBT_ms": 7700.01,
+    "INP_ms": 7836.28,
+    "CLS": 0.0089,
     "SRT_ms": 0,
-    "WallClock_ms": 7897
+    "WallClock_ms": 7930
   },
   {
     "No": 3,
     "n=50": 50,
-    "TTFB_ms": 2,
-    "TBT_ms": 7699.31,
-    "INP_ms": 7819.38,
-    "CLS": 0.0145,
+    "TTFB_ms": 41,
+    "TBT_ms": 7762.77,
+    "INP_ms": 7912.13,
+    "CLS": 0.0089,
     "SRT_ms": 0,
-    "WallClock_ms": 7889
+    "WallClock_ms": 8030
   },
   {
     "No": 4,
     "n=50": 50,
-    "TTFB_ms": 3,
-    "TBT_ms": 7740.55,
-    "INP_ms": 7868.97,
-    "CLS": 0.0145,
+    "TTFB_ms": 25,
+    "TBT_ms": 7741.91,
+    "INP_ms": 7883.74,
+    "CLS": 0.0089,
     "SRT_ms": 0,
-    "WallClock_ms": 7976
+    "WallClock_ms": 8000
   },
   {
     "No": 5,
     "n=50": 50,
-    "TTFB_ms": 3,
-    "TBT_ms": 7734.46,
-    "INP_ms": 7870.08,
-    "CLS": 0.0145,
+    "TTFB_ms": 25,
+    "TBT_ms": 7724.55,
+    "INP_ms": 7853.21,
+    "CLS": 0.0089,
     "SRT_ms": 0,
-    "WallClock_ms": 7970
+    "WallClock_ms": 7938
   }
 ]

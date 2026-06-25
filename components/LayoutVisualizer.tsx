@@ -59,14 +59,12 @@ const styles = {
     fontWeight: 600,
   },
   canvasContainer: {
-    // Tidak ada pre-alokasi dimensi CSS (width/height fixed).
-    // Ini membiarkan elemen canvas mendorong konten di bawahnya
-    // saat dirender, menghasilkan CLS "murni" sesuai hipotesis penelitian.
     marginTop: "16px",
     border: "1px solid var(--border)",
     backgroundColor: "var(--background)",
     display: "block",
     maxWidth: "100%",
+    height: "440px",
     overflowX: "auto" as const,
   },
   unplacedNotice: {
