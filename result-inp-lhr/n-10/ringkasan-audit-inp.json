@@ -1,0 +1,161 @@
+{
+  "diagnosticInfo": {
+    "scriptName": "benchmark-playwright-create-quote-csr-lhr.mjs",
+    "timestamp": "2026-06-28T08:27:55.668Z",
+    "quantity": 10,
+    "iterations": 3,
+    "targetUrl": "https://rendering-printing.vercel.app/create-quote/csr",
+    "throttling": {
+      "rttMs": 150,
+      "throughputKbps": 1638.4,
+      "requestLatencyMs": 150,
+      "downloadThroughputKbps": 1638.4,
+      "uploadThroughputKbps": 750,
+      "cpuSlowdownMultiplier": 4
+    },
+    "formFactor": "desktop",
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    }
+  },
+  "iterationSummaries": [
+    {
+      "iteration": 1,
+      "INP_ms": 117.86,
+      "TBT_ms": 31.81,
+      "auditsFound": [
+        {
+          "id": "interaction-to-next-paint",
+          "score": 0.98,
+          "numericValue": 117.857,
+          "displayValue": "120 ms",
+          "hasDetails": false,
+          "detailsType": null,
+          "itemCount": 0
+        },
+        {
+          "id": "long-tasks",
+          "score": 1,
+          "numericValue": "N/A",
+          "displayValue": "1 long task found",
+          "hasDetails": true,
+          "detailsType": "table",
+          "itemCount": 1
+        },
+        {
+          "id": "inp-breakdown-insight",
+          "score": 1,
+          "numericValue": "N/A",
+          "displayValue": null,
+          "hasDetails": true,
+          "detailsType": "list",
+          "itemCount": 2
+        }
+      ],
+      "attributions": [
+        {
+          "auditId": "long-tasks",
+          "duration": 81.815,
+          "startTime": 38.803
+        }
+      ]
+    },
+    {
+      "iteration": 2,
+      "INP_ms": 118.6,
+      "TBT_ms": 31.06,
+      "auditsFound": [
+        {
+          "id": "interaction-to-next-paint",
+          "score": 0.98,
+          "numericValue": 118.604,
+          "displayValue": "120 ms",
+          "hasDetails": false,
+          "detailsType": null,
+          "itemCount": 0
+        },
+        {
+          "id": "long-tasks",
+          "score": 1,
+          "numericValue": "N/A",
+          "displayValue": "1 long task found",
+          "hasDetails": true,
+          "detailsType": "table",
+          "itemCount": 1
+        },
+        {
+          "id": "inp-breakdown-insight",
+          "score": 1,
+          "numericValue": "N/A",
+          "displayValue": null,
+          "hasDetails": true,
+          "detailsType": "list",
+          "itemCount": 2
+        }
+      ],
+      "attributions": [
+        {
+          "auditId": "long-tasks",
+          "duration": 81.055,
+          "startTime": 31.63
+        }
+      ]
+    },
+    {
+      "iteration": 3,
+      "INP_ms": 120.04,
+      "TBT_ms": 29.48,
+      "auditsFound": [
+        {
+          "id": "interaction-to-next-paint",
+          "score": 0.98,
+          "numericValue": 120.036,
+          "displayValue": "120 ms",
+          "hasDetails": false,
+          "detailsType": null,
+          "itemCount": 0
+        },
+        {
+          "id": "long-tasks",
+          "score": 1,
+          "numericValue": "N/A",
+          "displayValue": "1 long task found",
+          "hasDetails": true,
+          "detailsType": "table",
+          "itemCount": 1
+        },
+        {
+          "id": "inp-breakdown-insight",
+          "score": 1,
+          "numericValue": "N/A",
+          "displayValue": null,
+          "hasDetails": true,
+          "detailsType": "list",
+          "itemCount": 2
+        }
+      ],
+      "attributions": [
+        {
+          "auditId": "long-tasks",
+          "duration": 79.48,
+          "startTime": 40.344
+        }
+      ]
+    }
+  ],
+  "consistency": {
+    "inpValues": [
+      117.86,
+      118.6,
+      120.04
+    ],
+    "tbtValues": [
+      31.81,
+      31.06,
+      29.48
+    ],
+    "auditIdsConsistent": true,
+    "hasInteractionAttribution": true
+  }
+}
