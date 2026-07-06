@@ -323,7 +323,6 @@ function recursivePack(
       freeRects.splice(index, 1, ...newRects);
 
       // Merge pass setiap beberapa penempatan untuk mengurangi fragmentasi
-      // Ini sengaja O(n²) untuk memperberat komputasi
       if (placements.length % 3 === 0) {
         const merged = mergeFreeRects(freeRects);
         freeRects.length = 0;
@@ -385,7 +384,7 @@ export function guillotineBinPack(
   ];
 
   // Global stress: skala komputasi berdasarkan total item
-  // n=50 → 2.5M iterasi berat, n=100 → 5M iterasi
+  // n=50 → 2.5M iterasi berat
   const globalStress = totalItemsRequested * 50_000;
   intensiveComputation(globalStress);
 

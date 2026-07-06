@@ -82,11 +82,11 @@ export default function Step5() {
 
   // Format Currency
   const formatCurrency = (val: number) => {
-    return new Intl.NumberFormat("id-ID", {
+    return new Intl.NumberFormat("en-US", {
       style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
     }).format(val);
   };
 
@@ -260,7 +260,7 @@ export default function Step5() {
                   <div className="flex justify-between items-end">
                     <div>
                       <span className="text-sm font-bold text-muted-foreground uppercase">Grand Total</span>
-                      <p className="text-xs text-muted-foreground mt-1">IDR (Includes Tax)</p>
+                      <p className="text-xs text-muted-foreground mt-1">USD (Includes Tax)</p>
                     </div>
                     <span className="text-3xl font-black text-primary tracking-tight">
                       {formatCurrency(calculationSnapshot.totalPrice)}
